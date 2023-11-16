@@ -263,8 +263,6 @@ namespace PcapngUtils.PcapNG.OptionTypes
                                 ret.AddRange(ConvertOptionFieldToByte((ushort)NameResolutionRecordEntry.NameResolutionRecordCode.Ip6Record, temp.ToArray(), reverseByteOrder, ActionOnException));
                         }
                         break;
-                    default:
-                        break;
                 }                
             }
 

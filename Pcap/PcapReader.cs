@@ -146,7 +146,7 @@ namespace PcapngUtils.Pcap
         /// </summary>
         protected override void Dispose(bool disposing)
         {
-            binaryReader?.Close();
+            binaryReader.Close();
             stream?.Close();
         }
 

@@ -183,39 +183,18 @@ namespace PcapngUtils.PcapNG
                        
                     }
 
-                    switch(block.BlockType)
+                    switch (block)
                     {
-                        case BaseBlock.Types.EnhancedPacket:
-                            {
-                                var enchantedBlock = block as EnchantedPacketBlock;
-                                if (enchantedBlock == null)
-                                    throw new Exception(
-                                        $"[ReadPackets] system cannot cast block to EnchantedPacketBlock. Block start on position: {prevPosition}.");
-                                else
-                                    OnReadPacket(enchantedBlock);
-                            }
+                        case EnchantedPacketBlock enchantedBlock:
+                        {
+                            OnReadPacket(enchantedBlock);
+                        }
                             break;
-                        case BaseBlock.Types.Packet:
-                            {
-                                var packetBlock = block as PacketBlock;
-                                if (packetBlock == null)
-                                    throw new Exception(
-                                        $"[ReadPackets] system cannot cast block to PacketBlock. Block start on position: {prevPosition}.");
-                                else
-                                    OnReadPacket(packetBlock);
-                            }
+                        case PacketBlock packetBlock:
+                            OnReadPacket(packetBlock);
                             break;
-                        case BaseBlock.Types.SimplePacket:
-                            {
-                                var simpleBlock = block as SimplePacketBlock;
-                                if (simpleBlock == null)
-                                    throw new Exception(
-                                        $"[ReadPackets] system cannot cast block to SimplePacketBlock. Block start on position: {prevPosition}.");
-                                else
-                                    OnReadPacket(simpleBlock);
-                            }
-                            break;
-                        default:
+                        case SimplePacketBlock simpleBlock:
+                            OnReadPacket(simpleBlock);
                             break;
                     } 
                 }
