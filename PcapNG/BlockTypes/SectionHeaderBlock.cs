@@ -1,13 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using PcapngUtils.PcapNG;
-using PcapngUtils.PcapNG.BlockTypes;
 using PcapngUtils.Extensions;
 using PcapngUtils.PcapNG.OptionTypes;
-using System.Diagnostics.Contracts;
 using NUnit.Framework;
 using System.Reflection;
 namespace PcapngUtils.PcapNG.BlockTypes
@@ -23,29 +18,29 @@ namespace PcapngUtils.PcapNG.BlockTypes
             [TestCase(false)]
             public static void SectionHeaderBlock_ConvertToByte_Test(bool reorder)
             {
-                SectionHeaderBlock prePacketBlock, postPacketBlock;
+                SectionHeaderBlock? prePacketBlock;
                 byte[] byteblock = { 10, 13, 13, 10, 136, 0, 0, 0, 77, 60, 43, 26, 1, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 3, 0, 43, 0, 54, 52, 45, 98, 105, 116, 32, 87, 105, 110, 100, 111, 119, 115, 32, 55, 32, 83, 101, 114, 118, 105, 99, 101, 32, 80, 97, 99, 107, 32, 49, 44, 32, 98, 117, 105, 108, 100, 32, 55, 54, 48, 49, 0, 4, 0, 52, 0, 68, 117, 109, 112, 99, 97, 112, 32, 49, 46, 49, 48, 46, 55, 32, 40, 118, 49, 46, 49, 48, 46, 55, 45, 48, 45, 103, 54, 98, 57, 51, 49, 97, 49, 32, 102, 114, 111, 109, 32, 109, 97, 115, 116, 101, 114, 45, 49, 46, 49, 48, 41, 0, 0, 0, 0, 136, 0, 0, 0 };
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        AbstractBlock block = AbstractBlockFactory.ReadNextBlock(binaryReader, false, null);
+                        var block = AbstractBlockFactory.ReadNextBlock(binaryReader, false, null);
                         Assert.IsNotNull(block);
                         prePacketBlock = block as SectionHeaderBlock;
                         Assert.IsNotNull(prePacketBlock);
-                        byteblock = prePacketBlock.ConvertToByte(reorder, null);
+                        byteblock = prePacketBlock!.ConvertToByte(reorder, null);
                     }
                 }
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        AbstractBlock block = AbstractBlockFactory.ReadNextBlock(binaryReader, reorder, null);
+                        var block = AbstractBlockFactory.ReadNextBlock(binaryReader, reorder, null);
                         Assert.IsNotNull(block);
-                        postPacketBlock = block as SectionHeaderBlock;
+                        var postPacketBlock = block as SectionHeaderBlock;
                         Assert.IsNotNull(postPacketBlock);
 
-                        Assert.AreEqual(prePacketBlock.BlockType, postPacketBlock.BlockType);
+                        Assert.AreEqual(prePacketBlock.BlockType, postPacketBlock!.BlockType);
                         Assert.AreEqual(prePacketBlock.MagicNumber, postPacketBlock.MagicNumber);
                         Assert.AreEqual(prePacketBlock.MajorVersion, postPacketBlock.MajorVersion);
                         Assert.AreEqual(prePacketBlock.MinorVersion, postPacketBlock.MinorVersion);
@@ -93,7 +88,7 @@ namespace PcapngUtils.PcapNG.BlockTypes
         {
             get
             {
-                return ((uint)this.MagicNumber).ToString("x");
+                return ((uint)MagicNumber).ToString("x");
             }
         }
 
@@ -109,7 +104,7 @@ namespace PcapngUtils.PcapNG.BlockTypes
         /// changes in such a way that tools that can read the new format could not read the old format (i.e., the code would have to check 
         /// the version number to be able to read both formats).
         /// </summary>
-        public UInt16 MajorVersion
+        public ushort MajorVersion
         {
             get;
             set;
@@ -120,7 +115,7 @@ namespace PcapngUtils.PcapNG.BlockTypes
         /// changes in such a way that tools that can read the new format can still automatically read the new format but code that can only 
         /// read the old format cannot read the new format.
         /// </summary>
-        public UInt16 MinorVersion
+        public ushort MinorVersion
         {
             get;
             set;
@@ -134,7 +129,7 @@ namespace PcapngUtils.PcapNG.BlockTypes
         /// boundaries. Also, special care should be taken in accessing this field: since the alignment of all the blocks in the file is 32-bit, 
         /// this field is not guaranteed to be aligned to a 64-bit boundary. This could be a problem on 64-bit workstations.
         /// </summary>
-        public Int64 SectionLength
+        public long SectionLength
         {
             get;
             set;
@@ -154,7 +149,6 @@ namespace PcapngUtils.PcapNG.BlockTypes
             }
             set
             {
-                Contract.Requires<ArgumentNullException>(value != null, "Options cannot be null");
                 options = value;
             }
         }
@@ -174,66 +168,60 @@ namespace PcapngUtils.PcapNG.BlockTypes
         #endregion
 
         #region method
-        public static SectionHeaderBlock Parse(BaseBlock baseBlock, Action<Exception> ActionOnException)
+        public static SectionHeaderBlock Parse(BaseBlock baseBlock, Action<Exception>? ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(baseBlock != null, "BaseBlock cannot be null");
-            Contract.Requires<ArgumentNullException>(baseBlock.Body != null, "BaseBlock.Body cannot be null");
-            Contract.Requires<ArgumentException>(baseBlock.BlockType == BaseBlock.Types.SectionHeader, "Invalid packet type");   
+            if (baseBlock.BlockType != BaseBlock.Types.SectionHeader)
+                throw new ArgumentException("Invalid packet type");
 
-            long positionInStream = baseBlock.PositionInStream;
-            using (Stream stream = new MemoryStream(baseBlock.Body))
-            {
-                using (BinaryReader binaryReader = new BinaryReader(stream))
-                {
-                    uint tempMagicNumber = binaryReader.ReadUInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var positionInStream = baseBlock.PositionInStream;
+            using Stream stream = new MemoryStream(baseBlock.Body);
+            using var binaryReader = new BinaryReader(stream);
+            var tempMagicNumber = binaryReader.ReadUInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
 
-                    if (!Enum.IsDefined(typeof(MagicNumbers), tempMagicNumber))
-                        throw new ArgumentException(string.Format("[SectionHeaderBlock.Parse] Unrecognized pcapNG magic number: {0}", tempMagicNumber.ToString("x")));
+            if (!Enum.IsDefined(typeof(MagicNumbers), tempMagicNumber))
+                throw new ArgumentException(
+                    $"[SectionHeaderBlock.Parse] Unrecognized pcapNG magic number: {tempMagicNumber.ToString("x")}");
 
-                    MagicNumbers magicNumber = (MagicNumbers)tempMagicNumber;
-                    ushort majorVersion = binaryReader.ReadUInt16().ReverseByteOrder(baseBlock.ReverseByteOrder);
-                    ushort minorVersion = binaryReader.ReadUInt16().ReverseByteOrder(baseBlock.ReverseByteOrder);
-                    long sectionLength = binaryReader.ReadInt64().ReverseByteOrder(baseBlock.ReverseByteOrder);
-                    SectionHeaderOption options = SectionHeaderOption.Parse(binaryReader, baseBlock.ReverseByteOrder, ActionOnException);
-                    SectionHeaderBlock headerBlock = new SectionHeaderBlock(magicNumber, majorVersion, minorVersion, sectionLength, options, positionInStream);
-                    return headerBlock;
-                }
-            }
+            var magicNumber = (MagicNumbers)tempMagicNumber;
+            var majorVersion = binaryReader.ReadUInt16().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var minorVersion = binaryReader.ReadUInt16().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var sectionLength = binaryReader.ReadInt64().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var options = SectionHeaderOption.Parse(binaryReader, baseBlock.ReverseByteOrder, ActionOnException);
+            var headerBlock = new SectionHeaderBlock(magicNumber, majorVersion, minorVersion, sectionLength, options, positionInStream);
+            return headerBlock;
         }
 
         public static SectionHeaderBlock GetEmptyHeader(bool ReverseByteOrder)
         {
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            AssemblyName assemblyName= assembly.GetName();
-            string app = string.Format("{0} {1}", assemblyName.Name, assemblyName.Version.ToString());
-            SectionHeaderOption options = new SectionHeaderOption(UserApplication: app);
+            var assembly = Assembly.GetExecutingAssembly();
+            var assemblyName= assembly.GetName();
+            var app = $"{assemblyName.Name} {assemblyName.Version?.ToString()}";
+            var options = new SectionHeaderOption(UserApplication: app);
             return new SectionHeaderBlock(ReverseByteOrder ? MagicNumbers.Swapped : MagicNumbers.Identical, 1, 0, -1, options);
         }
         /// <summary>
         /// The Section Header Block is mandatory. It identifies the beginning of a section of the capture dump file. The Section Header Block 
         /// does not contain data but it rather identifies a list of blocks (interfaces, packets) that are logically correlated.
         /// </summary>
-        public SectionHeaderBlock(MagicNumbers MagicNumber, UInt16 MajorVersion, UInt16 MinorVersion, Int64 SectionLength, SectionHeaderOption Options, long PositionInStream = 0)
+        public SectionHeaderBlock(MagicNumbers MagicNumber, ushort MajorVersion, ushort MinorVersion, long SectionLength, SectionHeaderOption Options, long PositionInStream = 0)
         {
-            Contract.Requires<ArgumentNullException>(Options != null, "Options cannot be null");
-
             this.MagicNumber = MagicNumber;
             this.MajorVersion = MajorVersion;
             this.MinorVersion = MinorVersion;
             this.SectionLength = SectionLength;
-            this.options = Options;
+            options = Options;
             this.PositionInStream = PositionInStream;
         }
 
-        protected override BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception> ActionOnException)
+        protected override BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            List<byte> body = new List<byte>();
+            var body = new List<byte>();
             body.AddRange(BitConverter.GetBytes(((uint)MagicNumber).ReverseByteOrder(reverseByteOrder)));
             body.AddRange(BitConverter.GetBytes(MajorVersion.ReverseByteOrder(reverseByteOrder)));
             body.AddRange(BitConverter.GetBytes(MinorVersion.ReverseByteOrder(reverseByteOrder)));
             body.AddRange(BitConverter.GetBytes(SectionLength.ReverseByteOrder(reverseByteOrder)));            
             body.AddRange(Options.ConvertToByte(reverseByteOrder, ActionOnException));
-            BaseBlock baseBlock = new BaseBlock(this.BlockType, body.ToArray(), reverseByteOrder, 0);
+            var baseBlock = new BaseBlock(BlockType, body.ToArray(), reverseByteOrder, 0);
             return baseBlock;
         }
         #endregion

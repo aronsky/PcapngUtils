@@ -1,9 +1,5 @@
 ﻿using NUnit.Framework;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PcapngUtils.PcapNG.CommonTypes
 {
@@ -17,150 +13,150 @@ namespace PcapngUtils.PcapNG.CommonTypes
             [Test]
             public static void PacketBlockFlags_Inbound_Test()
             {
-                PacketBlockFlags packetFlagInbound = new PacketBlockFlags(511);
+                var packetFlagInbound = new PacketBlockFlags(511);
                 Assert.IsTrue(packetFlagInbound.Inbound);
 
-                PacketBlockFlags packetFlagNoInbound = new PacketBlockFlags(512);
+                var packetFlagNoInbound = new PacketBlockFlags(512);
                 Assert.IsFalse(packetFlagNoInbound.Inbound);
             }
 
             [Test]
             public static void PacketBlockFlags_Outbound_Test()
             {
-                PacketBlockFlags packetFlagOutbound = new PacketBlockFlags(254);
+                var packetFlagOutbound = new PacketBlockFlags(254);
                 Assert.IsTrue(packetFlagOutbound.Outbound);
 
-                PacketBlockFlags packetFlagNoOutbound = new PacketBlockFlags(253);
+                var packetFlagNoOutbound = new PacketBlockFlags(253);
                 Assert.IsFalse(packetFlagNoOutbound.Outbound);
             }
 
             [Test]
             public static void PacketBlockFlags_Unicast_Test()
             {
-                PacketBlockFlags packetFlagUnicast = new PacketBlockFlags(255);
+                var packetFlagUnicast = new PacketBlockFlags(255);
                 Assert.IsTrue(packetFlagUnicast.Unicast);
 
-                PacketBlockFlags packetFlagNoUnicast = new PacketBlockFlags(128);
+                var packetFlagNoUnicast = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoUnicast.Unicast);
             }
 
             [Test]
             public static void PacketBlockFlags_Multicast_Test()
             {
-                PacketBlockFlags packetFlagMulticast = new PacketBlockFlags(255);
+                var packetFlagMulticast = new PacketBlockFlags(255);
                 Assert.IsTrue(packetFlagMulticast.Multicast);
 
-                PacketBlockFlags packetFlagNoMulticast = new PacketBlockFlags(128);
+                var packetFlagNoMulticast = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoMulticast.Multicast);
             }
 
             [Test]
             public static void PacketBlockFlags_Broadcast_Test()
             {
-                PacketBlockFlags packetFlagBroadcast = new PacketBlockFlags(255);
+                var packetFlagBroadcast = new PacketBlockFlags(255);
                 Assert.IsTrue(packetFlagBroadcast.Broadcast);
 
-                PacketBlockFlags packetFlagNoBroadcast = new PacketBlockFlags(128);
+                var packetFlagNoBroadcast = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoBroadcast.Broadcast);
             }
 
             [Test]
             public static void PacketBlockFlags_Promisious_Test()
             {
-                PacketBlockFlags packetFlagPromisious = new PacketBlockFlags(255);
+                var packetFlagPromisious = new PacketBlockFlags(255);
                 Assert.IsTrue(packetFlagPromisious.Promiscuous);
 
-                PacketBlockFlags packetFlagNoPromisious = new PacketBlockFlags(128);
+                var packetFlagNoPromisious = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoPromisious.Promiscuous);
             }
 
             [Test]
             public static void PacketBlockFlags_FCSLength_Test()
             {
-                PacketBlockFlags packetFlagFCSLength = new PacketBlockFlags(480);
+                var packetFlagFCSLength = new PacketBlockFlags(480);
                 Assert.IsTrue(packetFlagFCSLength.FCSLength);
 
-                PacketBlockFlags packetFlagNoFCSLength = new PacketBlockFlags(128);
+                var packetFlagNoFCSLength = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoFCSLength.FCSLength);
             }
 
             [Test]
             public static void PacketBlockFlags_CrcError_Test()
             {
-                PacketBlockFlags packetCrcError = new PacketBlockFlags(0xFF000000);
+                var packetCrcError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetCrcError.CrcError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.CrcError);
             }
 
             [Test]
             public static void PacketBlockFlags_PacketTooLongError_Test()
             {
-                PacketBlockFlags packetTooLongError = new PacketBlockFlags(0xFF000000);
+                var packetTooLongError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetTooLongError.PacketTooLongError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.PacketTooLongError);
             }
 
             [Test]
             public static void PacketBlockFlags_PacketTooShortError_Test()
             {
-                PacketBlockFlags packetTooShortError = new PacketBlockFlags(0xFF000000);
+                var packetTooShortError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetTooShortError.PacketTooShortError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.PacketTooShortError);
             }
 
             [Test]
             public static void PacketBlockFlags_WrongInterFrameGapError_Test()
             {
-                PacketBlockFlags packetWrongInterFrameGapError = new PacketBlockFlags(0xFF000000);
+                var packetWrongInterFrameGapError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetWrongInterFrameGapError.WrongInterFrameGapError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.WrongInterFrameGapError);
             }
 
             [Test]
             public static void PacketBlockFlags_UnalignedFrameError_Test()
             {
-                PacketBlockFlags packetUnalignedFrameError = new PacketBlockFlags(0xFF000000);
+                var packetUnalignedFrameError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetUnalignedFrameError.UnalignedFrameError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.UnalignedFrameError);
             }
 
             [Test]
             public static void PacketBlockFlags_tartFrameDelimiterError_Test()
             {
-                PacketBlockFlags packetStartFrameDelimiterError = new PacketBlockFlags(0xFF000000);
+                var packetStartFrameDelimiterError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetStartFrameDelimiterError.StartFrameDelimiterError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.StartFrameDelimiterError);
             }
 
             [Test]
             public static void PacketBlockFlags_PreambleError_Test()
             {
-                PacketBlockFlags packetPreambleError = new PacketBlockFlags(0xFF000000);
+                var packetPreambleError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetPreambleError.PreambleError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.PreambleError);
             }
 
             [Test]
             public static void PacketBlockFlags_SymbolError_Test()
             {
-                PacketBlockFlags packetSymbolError = new PacketBlockFlags(0xFF000000);
+                var packetSymbolError = new PacketBlockFlags(0xFF000000);
                 Assert.IsTrue(packetSymbolError.SymbolError);
 
-                PacketBlockFlags packetFlagNoError = new PacketBlockFlags(128);
+                var packetFlagNoError = new PacketBlockFlags(128);
                 Assert.IsFalse(packetFlagNoError.SymbolError);
             }
         }
@@ -320,18 +316,18 @@ namespace PcapngUtils.PcapNG.CommonTypes
         #region ctor
         public PacketBlockFlags(uint flag)
         {
-            this.Flag = flag;
+            Flag = flag;
         }
         #endregion  
 
         #region method
-        public override bool Equals(Object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType())
                 return false;
 
-            PacketBlockFlags p = (PacketBlockFlags)obj;
-            return (this.Flag == p.Flag);
+            var p = (PacketBlockFlags)obj;
+            return (Flag == p.Flag);
         }
 
         public override int GetHashCode()

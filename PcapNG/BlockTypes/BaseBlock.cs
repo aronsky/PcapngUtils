@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using PcapngUtils.PcapNG;
 using PcapngUtils.Extensions;
-using System.Diagnostics.Contracts;
 using NUnit.Framework;
 
 namespace PcapngUtils.PcapNG.BlockTypes
@@ -23,18 +19,18 @@ namespace PcapngUtils.PcapNG.BlockTypes
                 BaseBlock preBlock, postBlock;
                 byte[] byteblock = { 2, 0, 0, 0, 167, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 232, 3, 0, 0, 104, 83, 17, 243, 59, 0, 0, 0, 151, 143, 0, 243, 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 208, 241, 255, 191, 127, 0, 0, 0, 208, 79, 17, 243, 59, 0, 0, 0, 96, 5, 0, 243, 59, 0, 0, 0, 252, 6, 0, 243, 59, 0, 0, 0, 96, 2, 0, 243, 59, 0, 0, 0, 88, 6, 64, 0, 0, 0, 0, 0, 104, 83, 17, 243, 59, 0, 0, 0, 104, 83, 17, 243, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 167, 0, 0, 0 };
 
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
                         preBlock = new BaseBlock(binaryReader, false);
                         Assert.IsNotNull(preBlock);
                         byteblock = preBlock.ConvertToByte(reorder);
                     }
                 }
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
                         postBlock = new BaseBlock(binaryReader, reorder);
                         Assert.IsNotNull(postBlock);
@@ -61,7 +57,7 @@ namespace PcapngUtils.PcapNG.BlockTypes
         #endregion    
 
         #region fields && properties   
-        public static readonly Int32 AlignmentBoundary = 4;
+        public static readonly int AlignmentBoundary = 4;
         private static readonly uint  minimalTotaLength = 12;
 
         /// <summary>
@@ -107,41 +103,40 @@ namespace PcapngUtils.PcapNG.BlockTypes
         #region ctor
         public BaseBlock(BinaryReader binaryReader,bool reverseByteOrder)
         {
-            Contract.Requires<ArgumentNullException>(binaryReader != null, "binaryReader cannot be null");
+            ReverseByteOrder = reverseByteOrder;
+            PositionInStream = binaryReader.BaseStream.Position;
 
-            this.ReverseByteOrder = reverseByteOrder;
-            this.PositionInStream = binaryReader.BaseStream.Position;
+            var blockType = binaryReader.ReadUInt32().ReverseByteOrder(ReverseByteOrder);
+            if (!Enum.IsDefined(typeof(Types), blockType))
+                throw new ArgumentException(
+                    $"[BaseBlock.ctor] invalid blockType: {blockType.ToString("x")}, block begin on position {PositionInStream} ");
+            BlockType = (Types)blockType;
 
-            uint blockType = binaryReader.ReadUInt32().ReverseByteOrder(ReverseByteOrder);
-            if (!Enum.IsDefined(typeof(BaseBlock.Types), blockType))
-                throw new ArgumentException(string.Format("[BaseBlock.ctor] invalid blockType: {0}, block begin on position {1} ", blockType.ToString("x"), PositionInStream));
-            this.BlockType = (BaseBlock.Types)blockType;
-
-            uint totalLength = binaryReader.ReadUInt32().ReverseByteOrder(ReverseByteOrder); ;
+            var totalLength = binaryReader.ReadUInt32().ReverseByteOrder(ReverseByteOrder); ;
             if (totalLength < minimalTotaLength)
-                throw new Exception(string.Format("[BaseBlock.ctor] block begin on position {0} have insufficient total length {1}", PositionInStream, totalLength));
+                throw new Exception(
+                    $"[BaseBlock.ctor] block begin on position {PositionInStream} have insufficient total length {totalLength}");
             Body = binaryReader.ReadBytes((int)(totalLength - minimalTotaLength));
             if (Body.Length < totalLength - minimalTotaLength)
                 throw new EndOfStreamException("Unable to read beyond the end of the stream");
-            int remainderLength = (int)totalLength % AlignmentBoundary;
+            var remainderLength = (int)totalLength % AlignmentBoundary;
             if (remainderLength > 0)
             {
-                int paddingLength = AlignmentBoundary - remainderLength;
+                var paddingLength = AlignmentBoundary - remainderLength;
                 binaryReader.ReadBytes(paddingLength);
             }
 
-            uint endTotalLength = binaryReader.ReadUInt32().ReverseByteOrder(ReverseByteOrder); ;
+            var endTotalLength = binaryReader.ReadUInt32().ReverseByteOrder(ReverseByteOrder); ;
             if (totalLength != endTotalLength)
-                throw new Exception(string.Format("[BaseBlock.ctor] block begin on position {0} have differens total length fields. Start total fields {1}, and end total fields {2}. Probably this block is corrupted!", PositionInStream, totalLength, endTotalLength));
+                throw new Exception(
+                    $"[BaseBlock.ctor] block begin on position {PositionInStream} have differens total length fields. Start total fields {totalLength}, and end total fields {endTotalLength}. Probably this block is corrupted!");
         }
 
         public BaseBlock( Types BlockType, byte [] Body,bool reverseByteOrder, long PositionInStream = 0)
         {
-            Contract.Requires<ArgumentNullException>(Body != null, "Body cannot be null");
-
             this.BlockType = BlockType;
             this.Body = Body;
-            this.ReverseByteOrder = reverseByteOrder;
+            ReverseByteOrder = reverseByteOrder;
             this.PositionInStream = PositionInStream;
         }
 
@@ -150,17 +145,15 @@ namespace PcapngUtils.PcapNG.BlockTypes
         #region Method
         public byte[] ConvertToByte(bool reverseByteOrder)
         {
-            Contract.Requires<ArgumentNullException>(Body != null, "BaseBlock.Body cannot be null");
+            var ret = new List<byte>();
+            var remainderLength = (AlignmentBoundary - Body.Length % AlignmentBoundary) % AlignmentBoundary ;
 
-            List<byte> ret = new List<byte>();
-            int remainderLength = (AlignmentBoundary - Body.Length % AlignmentBoundary) % AlignmentBoundary ;
-
-            uint totalLength = (uint)Body.Length + minimalTotaLength;
+            var totalLength = (uint)Body.Length + minimalTotaLength;
 
             ret.AddRange(BitConverter.GetBytes(((uint)BlockType).ReverseByteOrder(reverseByteOrder)));
             ret.AddRange(BitConverter.GetBytes(totalLength.ReverseByteOrder(reverseByteOrder)));
             ret.AddRange(Body);
-            for (int i = 0; i < remainderLength; i++)
+            for (var i = 0; i < remainderLength; i++)
             {
                 ret.Add(0);
             }

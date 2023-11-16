@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
 using System.IO;
 using PcapngUtils.Extensions;
@@ -23,26 +22,26 @@ namespace PcapngUtils.PcapNG.OptionTypes
             [ContractVerification(false)]
             public static void PacketOption_ConvertToByte_Test(bool reorder)
             {
-                PacketOption preOption = new PacketOption();
+                var preOption = new PacketOption();
                 PacketOption postOption;
                 preOption.Comment = "Test Comment";
-                byte[] md5Hash = { 3, 87, 248, 225, 163, 56, 121, 102, 219, 226, 164, 68, 165, 51, 9, 177, 59 };
+                byte[]? md5Hash = { 3, 87, 248, 225, 163, 56, 121, 102, 219, 226, 164, 68, 165, 51, 9, 177, 59 };
                 preOption.Hash = new HashBlock(md5Hash);
                 preOption.PacketFlag = new PacketBlockFlags(0xFF000000);
-                byte[] preOptionByte = preOption.ConvertToByte(reorder, null);
-                using (MemoryStream stream = new MemoryStream(preOptionByte))
+                var preOptionByte = preOption.ConvertToByte(reorder, null);
+                using (var stream = new MemoryStream(preOptionByte))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        postOption = PacketOption.Parse(binaryReader, reorder, null);
+                        postOption = Parse(binaryReader, reorder, null);
                     }
                 }
 
                 Assert.IsNotNull(postOption);
                 Assert.AreEqual(preOption.Comment, postOption.Comment);
-                Assert.AreEqual(preOption.Hash.Algorithm, postOption.Hash.Algorithm);
-                Assert.AreEqual(preOption.Hash.Value, postOption.Hash.Value);
-                Assert.AreEqual(preOption.PacketFlag.Flag, postOption.PacketFlag.Flag);
+                Assert.AreEqual(preOption.Hash.Algorithm, postOption.Hash?.Algorithm);
+                Assert.AreEqual(preOption.Hash.Value, postOption.Hash?.Value);
+                Assert.AreEqual(preOption.PacketFlag.Flag, postOption.PacketFlag?.Flag);
             }
         }
         #endregion
@@ -61,7 +60,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// A UTF-8 string containing a comment that is associated to the current block.
         /// </summary>
-        public string Comment
+        public string? Comment
         {
             get;
             set;
@@ -70,7 +69,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// A flags word containing link-layer information. 
         /// </summary>
-        public PacketBlockFlags PacketFlag
+        public PacketBlockFlags? PacketFlag
         {
             get;
             set;
@@ -85,7 +84,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// of different capture files, and reliable data transfer between the data acquisition system and the capture library. (TODO: the text 
         /// above uses "first bit", but shouldn't this be "first byte"?!?)
         /// </summary>
-        public HashBlock Hash
+        public HashBlock? Hash
         {
             get;
             set;
@@ -93,7 +92,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         #endregion
 
         #region ctor
-        public PacketOption(string Comment = null, PacketBlockFlags PacketFlag = null, HashBlock Hash = null)
+        public PacketOption(string? Comment = null, PacketBlockFlags? PacketFlag = null, HashBlock? Hash = null)
         {
             this.Comment = Comment;
             this.PacketFlag = PacketFlag;
@@ -102,76 +101,70 @@ namespace PcapngUtils.PcapNG.OptionTypes
         #endregion
 
         #region method
-        public static PacketOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception> ActionOnException)
+        public static PacketOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(binaryReader != null, "binaryReader cannot be null");
-
-            PacketOption option = new PacketOption();
-            List<KeyValuePair<ushort, byte[]>> optionsList = EkstractOptions(binaryReader, reverseByteOrder, ActionOnException);
-            if (optionsList.Any())
+            var option = new PacketOption();
+            var optionsList = ExtractOptions(binaryReader, reverseByteOrder, ActionOnException);
+            if (!optionsList.Any()) return option;
+            foreach (var item in optionsList)
             {
-                foreach (var item in optionsList)
+                try
                 {
-                    try
+                    switch (item.Key)
                     {
-                        switch (item.Key)
-                        {
-                            case (ushort)PacketOptionCode.CommentCode:
-                                option.Comment = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)PacketOptionCode.PacketFlagCode: 
-                                if (item.Value.Length == 4)
-                                {
-                                    uint packetFlag = (BitConverter.ToUInt32(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                    option.PacketFlag = new PacketBlockFlags(packetFlag);
-                                }
-                                else
-                                    throw new ArgumentException(string.Format("[PacketOption.Parse] PacketFlagCode contains invalid length. Received: {0} bytes, expected: {1}.", item.Value.Length, 4));
-                                break;
-                            case (ushort)PacketOptionCode.HashCode:
-                                option.Hash = new HashBlock(item.Value);
-                                break;
-                            case (ushort)PacketOptionCode.EndOfOptionsCode:
-                            default:
-                                break;
-                        }
+                        case (ushort)PacketOptionCode.CommentCode:
+                            option.Comment = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)PacketOptionCode.PacketFlagCode: 
+                            if (item.Value.Length == 4)
+                            {
+                                var packetFlag = (BitConverter.ToUInt32(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                                option.PacketFlag = new PacketBlockFlags(packetFlag);
+                            }
+                            else
+                                throw new ArgumentException(
+                                    $"[PacketOption.Parse] PacketFlagCode contains invalid length. Received: {item.Value.Length} bytes, expected: {4}.");
+                            break;
+                        case (ushort)PacketOptionCode.HashCode:
+                            option.Hash = new HashBlock(item.Value);
+                            break;
                     }
-                    catch (Exception exc)
-                    {
-                        if (ActionOnException != null)
-                            ActionOnException(exc);
-                    }
+                }
+                catch (Exception exc)
+                {
+                    if (ActionOnException != null)
+                        ActionOnException(exc);
                 }
             }
             return option;
         }
 
-        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception> ActionOnException)
+        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
 
-            List<byte> ret = new List<byte>();
+            var ret = new List<byte>();
 
             if (Comment != null)
             {
-                byte[] comentValue = UTF8Encoding.UTF8.GetBytes(Comment);
-                if (comentValue.Length <= UInt16.MaxValue)
-                    ret.AddRange(ConvertOptionFieldToByte((ushort)PacketOptionCode.CommentCode, comentValue, reverseByteOrder, ActionOnException));
+                var commentValue = Encoding.UTF8.GetBytes(Comment);
+                if (commentValue.Length <= ushort.MaxValue)
+                    ret.AddRange(ConvertOptionFieldToByte((ushort)PacketOptionCode.CommentCode, commentValue, reverseByteOrder, ActionOnException));
             }
 
             if (PacketFlag != null)
             {
-                byte[] packetFlagValue = BitConverter.GetBytes(PacketFlag.Flag.ReverseByteOrder(reverseByteOrder));
+                var packetFlagValue = BitConverter.GetBytes(PacketFlag.Flag.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)PacketOptionCode.PacketFlagCode, packetFlagValue, reverseByteOrder, ActionOnException));
             }
 
             if (Hash != null)
             {
-                byte[] hashValue = Hash.ConvertToByte();
-                if (hashValue.Length <= UInt16.MaxValue)
+                var hashValue = Hash.ConvertToByte();
+                if (hashValue is {Length: <= ushort.MaxValue})
                     ret.AddRange(ConvertOptionFieldToByte((ushort)PacketOptionCode.HashCode, hashValue, reverseByteOrder, ActionOnException));
             }
 
-            ret.AddRange(ConvertOptionFieldToByte((ushort)PacketOptionCode.EndOfOptionsCode, new byte[0], reverseByteOrder, ActionOnException));
+            ret.AddRange(ConvertOptionFieldToByte((ushort)PacketOptionCode.EndOfOptionsCode, Array.Empty<byte>(), reverseByteOrder, ActionOnException));
             return ret.ToArray();
         }
         #endregion

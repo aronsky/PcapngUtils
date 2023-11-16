@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using PcapngUtils.Extensions;
 using System.Diagnostics.Contracts;
 using NUnit.Framework;
@@ -25,7 +24,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
             [ContractVerification(false)]
             public static void InterfaceDescriptionOption_ConvertToByte_Test(bool reorder)
             {
-                InterfaceDescriptionOption preOption = new InterfaceDescriptionOption();
+                var preOption = new InterfaceDescriptionOption();
                 InterfaceDescriptionOption postOption;
                 preOption.Comment = "Test Comment";
                 preOption.Description = "Test Description";
@@ -43,12 +42,12 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 preOption.TimeZone = 1;
 
 
-                byte[] preOptionByte = preOption.ConvertToByte(reorder, null);
-                using (MemoryStream stream = new MemoryStream(preOptionByte))
+                var preOptionByte = preOption.ConvertToByte(reorder, null);
+                using (var stream = new MemoryStream(preOptionByte))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        postOption = InterfaceDescriptionOption.Parse(binaryReader, reorder, null);
+                        postOption = Parse(binaryReader, reorder, null);
                     }
                 }
 
@@ -83,13 +82,13 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 [Test]
                 public static void InterfaceDescriptionOption_IPAddress_v4_Test()
                 {
-                    byte[] preTab = new byte[] { 192, 168, 0, 1, 255, 255, 255, 0 };
-                    IPAddress_v4 address = new IPAddress_v4(preTab);
+                    var preTab = new byte[] { 192, 168, 0, 1, 255, 255, 255, 0 };
+                    var address = new IPAddress_v4(preTab);
                     Assert.IsNotNull(address);
                     Assert.AreEqual(address.Address, "192.168.0.1");
                     Assert.AreEqual(address.Mask, "255.255.255.0");
                     Assert.AreEqual(address.ToString(), "192.168.0.1 255.255.255.0");
-                    byte[] postTab = address.ConvertToByte();
+                    var postTab = address.ConvertToByte();
                     Assert.AreEqual(preTab, postTab);
                 }
             }
@@ -102,19 +101,16 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 get { return string.Join(".", address ); }
             }
 
-            private readonly byte[] mask = null;  
+            private readonly byte[] mask;  
 
-            public string Mask
-            {
-                get { return string.Join(".", mask); }
-            }
+            public string Mask => string.Join(".", mask);
+
             #endregion
 
             #region ctor
-            public IPAddress_v4(byte [] data)
+            public IPAddress_v4(IReadOnlyCollection<byte> data)
             {
-                Contract.Requires<ArgumentNullException>(data != null, "Data cannot be null");
-                Contract.Requires<ArgumentException>(data.Length == 8,"Invalid data length. (Data length must be = 8)") ;
+                if (data.Count != 8) throw new ArgumentException("Invalid data length. (Data length must be = 8)");
                 address = data.Take(4).ToArray();
                 mask = data.Skip(4).Take(4).ToArray();
             }
@@ -123,7 +119,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
             #region method
             public override string ToString()
             {
-                return string.Format("{0} {1}", Address, Mask);
+                return $"{Address} {Mask}";
             }
 
             public IPAddress ConvertAddressToIPAddress()
@@ -136,13 +132,13 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 return address.Concat(mask).ToArray();
             }
 
-            public override bool Equals(Object obj)
+            public override bool Equals(object? obj)
             {
                 if (obj == null || GetType() != obj.GetType())
                     return false;
 
-                IPAddress_v4 p = (IPAddress_v4)obj;
-                return (this.ToString().CompareTo(p.ToString()) ==0);
+                var p = (IPAddress_v4)obj;
+                return string.Compare(ToString(), p.ToString(), StringComparison.Ordinal) == 0;
             }
 
             public override int GetHashCode()
@@ -161,13 +157,13 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 [Test]
                 public static void InterfaceDescriptionOption_IPAddress_v6_Test()
                 {
-                    byte[] preTab = new byte[] { 0x20, 0x01, 0x0d, 0xb8, 0x85, 0xa3, 0x08, 0xd3, 0x13, 0x19, 0x8a, 0x2e, 0x03, 0x70, 0x73, 0x44, 0x40 };
-                    IPAddress_v6 address = new IPAddress_v6(preTab);
+                    var preTab = new byte[] { 0x20, 0x01, 0x0d, 0xb8, 0x85, 0xa3, 0x08, 0xd3, 0x13, 0x19, 0x8a, 0x2e, 0x03, 0x70, 0x73, 0x44, 0x40 };
+                    var address = new IPAddress_v6(preTab);
                     Assert.IsNotNull(address);
                     Assert.AreEqual(address.Address, "2001:0db8:85a3:08d3:1319:8a2e:0370:7344");
                     Assert.AreEqual(address.PrefixLength, 64);
                     Assert.AreEqual(address.ToString(), "2001:0db8:85a3:08d3:1319:8a2e:0370:7344/64");
-                    byte[] postTab = address.ConvertToByte();
+                    var postTab = address.ConvertToByte();
                     Assert.AreEqual(preTab, postTab);
                 }
             }
@@ -179,12 +175,12 @@ namespace PcapngUtils.PcapNG.OptionTypes
             {
                 get 
                 {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 1; i < address.Length; i = i + 2)
+                    var sb = new StringBuilder();
+                    for (var i = 1; i < address.Length; i = i + 2)
                     {
                         if (sb.Length > 0)
                             sb.Append(":");
-                        ushort item = (ushort)(address[i] + (address[i - 1] << 8));
+                        var item = (ushort)(address[i] + (address[i - 1] << 8));
                         sb.Append(item.ToString("x").PadLeft(4, '0'));
                     }
                     return sb.ToString();
@@ -199,10 +195,9 @@ namespace PcapngUtils.PcapNG.OptionTypes
             #endregion
 
             #region ctor
-            public IPAddress_v6(byte[] data)
+            public IPAddress_v6(IReadOnlyList<byte> data)
             {
-                Contract.Requires<ArgumentNullException>(data != null, "Data cannot be null");
-                Contract.Requires<ArgumentException>(data.Length == 17, "Invalid data length. (Data length must be = 17)");
+                if (data.Count != 17) throw new ArgumentException("Invalid data length. (Data length must be = 17)");
                 address = data.Take(16).ToArray();
                 PrefixLength = data[16];
             }
@@ -211,7 +206,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
             #region method
             public override string ToString()
             {
-                return string.Format("{0}/{1}", Address, PrefixLength);
+                return $"{Address}/{PrefixLength}";
             }
 
             public IPAddress ConvertAddressToIPAddress()
@@ -224,13 +219,13 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 return address.Concat(new List<byte>(){PrefixLength}).ToArray();
             }
 
-            public override bool Equals(Object obj)
+            public override bool Equals(object? obj)
             {
                 if (obj == null || GetType() != obj.GetType())
                     return false;
 
-                IPAddress_v6 p = (IPAddress_v6)obj;
-                return (this.ToString().CompareTo(p.ToString()) == 0);
+                var p = (IPAddress_v6)obj;
+                return string.Compare(ToString(), p.ToString(), StringComparison.Ordinal) == 0;
             }
 
             public override int GetHashCode()
@@ -266,7 +261,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// A UTF-8 string containing a comment that is associated to the current block.
         /// </summary>
-        public string Comment
+        public string? Comment
         {
             get;
             set;
@@ -275,7 +270,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// A UTF-8 string containing the name of the device used to capture data.
         /// </summary>
-        public string Name
+        public string? Name
         {
             get;
             set;
@@ -284,7 +279,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// A UTF-8 string containing the description of the device used to capture data.
         /// </summary>
-        public string Description
+        public string? Description
         {
             get;
             set;
@@ -294,7 +289,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// Interface network address and netmask. This option can be repeated multiple times within the same Interface Description Block 
         /// when multiple IPv4 addresses are assigned to the interface.
         /// </summary>
-        public IPAddress_v4 IPv4Address
+        public IPAddress_v4? IPv4Address
         {
             get;
             set;
@@ -304,7 +299,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// Interface network address and prefix length (stored in the last byte). This option can be repeated multiple times within the 
         /// same Interface Description Block when multiple IPv6 addresses are assigned to the interface.
         /// </summary>
-        public IPAddress_v6 IPv6Address
+        public IPAddress_v6? IPv6Address
         {
             get;
             set;
@@ -313,25 +308,22 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// Interface Hardware MAC address
         /// </summary>
-        public PhysicalAddress MacAddress
+        public PhysicalAddress? MacAddress
         {
             get;
             set;
         }
 
-        private byte[] euiAddress;
+        private byte[]? euiAddress;
         /// <summary>
         /// Interface Hardware EUI address (64 bits), if available.
         /// </summary>
-        public byte [] EuiAddress
+        public byte[]? EuiAddress
         {
-            get
+            get => euiAddress;
+            private set
             {
-                return euiAddress;
-            }
-            set
-            {
-                Contract.Requires<ArgumentException>(value == null || value.Length == 8, "Invalid EuiAddress length. (Should be 8 bytes)");
+                if (value is {Length: not 8}) throw new ArgumentException("Invalid EuiAddress length. (Should be 8 bytes)");
                 euiAddress = value;
             }
         }
@@ -342,7 +334,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public long? Speed
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -355,7 +347,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public byte? TimestampResolution
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -364,17 +356,17 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public int? TimeZone
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
         /// The filter (e.g. "capture only TCP traffic") used to capture traffic. The first byte of the Option Data keeps a code of the 
         /// filter used (e.g. if this is a libpcap string, or BPF bytecode, and more)
         /// </summary>
-        public byte[] Filter
+        public byte[]? Filter
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -382,10 +374,10 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// different from the same information that can be contained by the Section Header Block (Section 3.1) because the capture can have 
         /// been done on a remote machine.
         /// </summary>
-        public string OperatingSystem
+        public string? OperatingSystem
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -395,7 +387,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public byte? FrameCheckSequence
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -407,23 +399,23 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public long? TimeOffsetSeconds
         {
             get;
-            set;
+            private set;
         }
         #endregion
 
         #region ctor
-        public InterfaceDescriptionOption(string Comment = null, string Name = null, string Description = null, IPAddress IPv4Address_v4 = null,
-            IPAddress_v6 IPv6Address = null, PhysicalAddress MacAddress = null, byte[] EuiAddress = null, long? Speed = null, byte? TimestampResolution = 6,
-            int? TimeZone = null, byte[] Filter = null, string OperatingSystem = null, byte? FrameCheckSequence = null, long? TimeOffsetSeconds = null) 
+        public InterfaceDescriptionOption(string? Comment = null, string? Name = null, string? Description = null, IPAddress? IPv4Address_v4 = null,
+            IPAddress_v6? IPv6Address = null, PhysicalAddress? MacAddress = null, byte[]? EuiAddress = null, long? Speed = null, byte? TimestampResolution = 6,
+            int? TimeZone = null, byte[]? Filter = null, string? OperatingSystem = null, byte? FrameCheckSequence = null, long? TimeOffsetSeconds = null)
         {
-            Contract.Requires<ArgumentException>(EuiAddress == null || EuiAddress.Length == 8, "Invalid EuiAddress length. (Should be 8 bytes)");               
+            if (EuiAddress is {Length: not 8}) throw new ArgumentException("Invalid EuiAddress length. (Should be 8 bytes)");
             this.Comment = Comment;
             this.Name = Name;
             this.Description = Description;
-            this.IPv4Address = IPv4Address;
+            IPv4Address = IPv4Address;
             this.IPv6Address = IPv6Address;
             this.MacAddress = MacAddress;
-            this.euiAddress = EuiAddress;
+            euiAddress = EuiAddress;
             this.Speed = Speed;
             this.TimestampResolution = TimestampResolution;
             this.TimeZone = TimeZone;
@@ -435,130 +427,135 @@ namespace PcapngUtils.PcapNG.OptionTypes
         #endregion
 
         #region method
-        public static InterfaceDescriptionOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception> ActionOnException)
+        public static InterfaceDescriptionOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(binaryReader != null, "binaryReader cannot be null");
-            InterfaceDescriptionOption option = new InterfaceDescriptionOption();
-            List<KeyValuePair<ushort, byte[]>> optionsList = EkstractOptions(binaryReader, reverseByteOrder, ActionOnException);
-            
-            if (optionsList.Any())
-            {                          
-                foreach (var item in optionsList)
+            var option = new InterfaceDescriptionOption();
+            var optionsList = ExtractOptions(binaryReader, reverseByteOrder, ActionOnException);
+
+            if (!optionsList.Any()) return option;
+            foreach (var item in optionsList)
+            {
+                try
                 {
-                    try
+                    switch (item.Key)
                     {
-                        switch (item.Key)
-                        {
-                            case (ushort)InterfaceDescriptionOptionCode.CommentCode:
-                                option.Comment = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.NameCode:
-                                option.Name = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.DescriptionCode:
-                                option.Description = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.IPv4AddressCode:                                 
-                                if (item.Value.Length == 8)
-                                {
-                                    option.IPv4Address = new IPAddress_v4(item.Value);
-                                }
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] IPv4AddressCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.IPv6AddressCode:                                
-                                if (item.Value.Length == 17)
-                                {
-                                    option.IPv6Address = new IPAddress_v6(item.Value);
-                                }
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] IPv6AddressCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 17));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.MacAddressCode:                                
-                                if (item.Value.Length == 6)
-                                    option.MacAddress = new PhysicalAddress(item.Value);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] MacAddressCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 6));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.EuiAddressCode:                                 
-                                if (item.Value.Length == 8)
-                                    option.EuiAddress = item.Value;
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] EuiAddressCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.SpeedCode:                               
-                                if (item.Value.Length == 8)
-                                    option.Speed = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] SpeedCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.TimestampResolutionCode:                               
-                                if (item.Value.Length == 1)
-                                    option.TimestampResolution = item.Value[0];
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] TimestampResolutionCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 1));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.TimeZoneCode:                                						
-                                if (item.Value.Length == 4)
-                                    option.TimeZone = (BitConverter.ToInt32(item.Value, 0)).ReverseByteOrder(reverseByteOrder);	// GMT offset
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] TimeZoneCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 4));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.FilterCode:
-                                option.Filter = item.Value;	
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.OperatingSystemCode:
-                                option.OperatingSystem = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.FrameCheckSequenceCode:                                
-                                 if (item.Value.Length == 1)
-                                     option.FrameCheckSequence = item.Value[0];
-                                else
-                                     throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] FrameCheckSequenceCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 1));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.TimeOffsetSecondsCode:                               
-                                if (item.Value.Length == 8)
-                                    option.TimeOffsetSeconds = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceDescriptio.Parse] TimeOffsetSecondsCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceDescriptionOptionCode.EndOfOptionsCode:
-                            default:
-                                break;
-                        }
-                    }
-                    catch (Exception exc)
-                    {
-                        if (ActionOnException != null)
-                            ActionOnException(exc);
+                        case (ushort)InterfaceDescriptionOptionCode.CommentCode:
+                            option.Comment = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.NameCode:
+                            option.Name = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.DescriptionCode:
+                            option.Description = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.IPv4AddressCode:                                 
+                            if (item.Value.Length == 8)
+                            {
+                                option.IPv4Address = new IPAddress_v4(item.Value);
+                            }
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] IPv4AddressCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.IPv6AddressCode:                                
+                            if (item.Value.Length == 17)
+                            {
+                                option.IPv6Address = new IPAddress_v6(item.Value);
+                            }
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] IPv6AddressCode contains invalid length. Received: {item.Value.Length} bytes, expected: {17}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.MacAddressCode:                                
+                            if (item.Value.Length == 6)
+                                option.MacAddress = new PhysicalAddress(item.Value);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] MacAddressCode contains invalid length. Received: {item.Value.Length} bytes, expected: {6}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.EuiAddressCode:                                 
+                            if (item.Value.Length == 8)
+                                option.EuiAddress = item.Value;
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] EuiAddressCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.SpeedCode:                               
+                            if (item.Value.Length == 8)
+                                option.Speed = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] SpeedCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.TimestampResolutionCode:                               
+                            if (item.Value.Length == 1)
+                                option.TimestampResolution = item.Value[0];
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] TimestampResolutionCode contains invalid length. Received: {item.Value.Length} bytes, expected: {1}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.TimeZoneCode:                                						
+                            if (item.Value.Length == 4)
+                                option.TimeZone = (BitConverter.ToInt32(item.Value, 0)).ReverseByteOrder(reverseByteOrder);	// GMT offset
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] TimeZoneCode contains invalid length. Received: {item.Value.Length} bytes, expected: {4}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.FilterCode:
+                            option.Filter = item.Value;	
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.OperatingSystemCode:
+                            option.OperatingSystem = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.FrameCheckSequenceCode:                                
+                            if (item.Value.Length == 1)
+                                option.FrameCheckSequence = item.Value[0];
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] FrameCheckSequenceCode contains invalid length. Received: {item.Value.Length} bytes, expected: {1}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.TimeOffsetSecondsCode:                               
+                            if (item.Value.Length == 8)
+                                option.TimeOffsetSeconds = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceDescription.Parse] TimeOffsetSecondsCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceDescriptionOptionCode.EndOfOptionsCode:
+                        default:
+                            break;
                     }
                 }
-            }               
+                catch (Exception exc)
+                {
+                    ActionOnException?.Invoke(exc);
+                }
+            }
             return option;
         }
 
-        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception> ActionOnException)
+        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception>? ActionOnException)
         { 
-            List<byte> ret = new List<byte>();
+            var ret = new List<byte>();
 
             if (Comment != null)
             {
-                byte[] comentValue = UTF8Encoding.UTF8.GetBytes(Comment);
-                if (comentValue.Length <= UInt16.MaxValue)
-                    ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.CommentCode, comentValue, reverseByteOrder, ActionOnException));
+                var commentValue = Encoding.UTF8.GetBytes(Comment);
+                if (commentValue.Length <= ushort.MaxValue)
+                    ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.CommentCode, commentValue, reverseByteOrder, ActionOnException));
             }
 
             if (Name != null)
             {
-                byte[] nameValue = UTF8Encoding.UTF8.GetBytes(Name);
-                if (nameValue.Length <= UInt16.MaxValue)
+                var nameValue = Encoding.UTF8.GetBytes(Name);
+                if (nameValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.NameCode, nameValue, reverseByteOrder, ActionOnException));
             }
 
             if (Description != null)
             {
-                byte[] descValue = UTF8Encoding.UTF8.GetBytes(Description);
-                if (descValue.Length <= UInt16.MaxValue)
+                var descValue = Encoding.UTF8.GetBytes(Description);
+                if (descValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.DescriptionCode, descValue, reverseByteOrder, ActionOnException));
             }
 
@@ -577,56 +574,48 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.MacAddressCode, MacAddress.GetAddressBytes(), reverseByteOrder, ActionOnException));
             }
 
-            if (EuiAddress != null)
-            {
-                if (EuiAddress.Length <= UInt16.MaxValue)
-                ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.EuiAddressCode, EuiAddress, reverseByteOrder, ActionOnException));
-            } 
+            if (EuiAddress is {Length: <= ushort.MaxValue}) ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.EuiAddressCode, EuiAddress, reverseByteOrder, ActionOnException));
 
             if (Speed.HasValue)
             {
-                byte[] speedValue = BitConverter.GetBytes(Speed.Value.ReverseByteOrder(reverseByteOrder));
+                var speedValue = BitConverter.GetBytes(Speed.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.SpeedCode, speedValue, reverseByteOrder, ActionOnException));
             }
 
             if (TimestampResolution.HasValue)
             {
-                byte[] timestampValue = { TimestampResolution.Value};
+                byte[]? timestampValue = { TimestampResolution.Value };
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.TimestampResolutionCode, timestampValue, reverseByteOrder, ActionOnException));
             }
 
             if (TimeZone.HasValue)
             {
-                byte[] timeZoneValue = BitConverter.GetBytes(TimeZone.Value.ReverseByteOrder(reverseByteOrder));
+                var timeZoneValue = BitConverter.GetBytes(TimeZone.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.TimeZoneCode, timeZoneValue, reverseByteOrder, ActionOnException));
             }
 
-            if (Filter != null)
-            {
-                if (Filter.Length <= UInt16.MaxValue)
-                    ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.FilterCode, Filter, reverseByteOrder, ActionOnException));
-            }
+            if (Filter is {Length: <= ushort.MaxValue}) ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.FilterCode, Filter, reverseByteOrder, ActionOnException));
 
             if (OperatingSystem != null)
             {
-                byte[] systemValue = UTF8Encoding.UTF8.GetBytes(OperatingSystem);
-                if (systemValue.Length <= UInt16.MaxValue)
+                var systemValue = Encoding.UTF8.GetBytes(OperatingSystem);
+                if (systemValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.OperatingSystemCode, systemValue, reverseByteOrder, ActionOnException));
             }
 
             if (FrameCheckSequence.HasValue)
             {
-                byte[] fcValue = { FrameCheckSequence.Value };
+                byte[]? fcValue = { FrameCheckSequence.Value };
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.FrameCheckSequenceCode, fcValue, reverseByteOrder, ActionOnException));
             }
 
             if (TimeOffsetSeconds.HasValue)
             {
-                byte[] timeOffsetValue = BitConverter.GetBytes(TimeOffsetSeconds.Value.ReverseByteOrder(reverseByteOrder));
+                var timeOffsetValue = BitConverter.GetBytes(TimeOffsetSeconds.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.TimeOffsetSecondsCode, timeOffsetValue, reverseByteOrder, ActionOnException));
             }
 
-            ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.EndOfOptionsCode, new byte[0], reverseByteOrder, ActionOnException));
+            ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceDescriptionOptionCode.EndOfOptionsCode, Array.Empty<byte>(), reverseByteOrder, ActionOnException));
             return ret.ToArray();
         } 
         #endregion

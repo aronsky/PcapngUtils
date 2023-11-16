@@ -1,58 +1,35 @@
 ﻿using PcapngUtils.PcapNG.BlockTypes;
-using PcapngUtils.PcapNG.OptionTypes;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PcapngUtils.PcapNG
 {
     public class HeaderWithInterfacesDescriptions
     {
-        #region fields && properties 
-        private SectionHeaderBlock header;
-        public SectionHeaderBlock Header
-        {
-            get
-            {
-                return header;
-            }
-            set
-            {
-                Contract.Requires<ArgumentNullException>(value != null, "Header cannot be null");
-                header = value;
-            }
-        }
+        #region fields && properties
 
-        private readonly List<InterfaceDescriptionBlock> interfaceDescriptions = new List<InterfaceDescriptionBlock>();
-        public IList<InterfaceDescriptionBlock> InterfaceDescriptions
-        {
-            get { return interfaceDescriptions.AsReadOnly(); }
-        }
+        public SectionHeaderBlock Header { get; }
+
+        private readonly List<InterfaceDescriptionBlock> interfaceDescriptions;
+        public IList<InterfaceDescriptionBlock> InterfaceDescriptions => interfaceDescriptions.AsReadOnly();
 
         #endregion
 
         #region ctor
         public HeaderWithInterfacesDescriptions(SectionHeaderBlock header, List<InterfaceDescriptionBlock> interfaceDescriptions)
         {
-            Contract.Requires<ArgumentNullException>(header != null, "Header cannot be null");
-            Contract.Requires<ArgumentNullException>(interfaceDescriptions != null, "Interface description list cannot be null");
-
-            Contract.Requires<ArgumentException>(interfaceDescriptions.Count >= 1, "Interface description list is empty");
+            if (interfaceDescriptions.Count < 1) throw new ArgumentException("Interface description list is empty");
             
-            this.Header = header;
+            Header = header;
             this.interfaceDescriptions = interfaceDescriptions;
         }
         #endregion
 
 
         #region method
-        public byte[] ConvertToByte(bool reverseBytesOrder, Action<Exception> ActionOnException )
+        public byte[] ConvertToByte(bool reverseBytesOrder, Action<Exception>? ActionOnException )
         {
-            Contract.Requires<ArgumentNullException>(Header != null, "Header cannot be null");
-            List<byte> ret = new List<byte>();
+            var ret = new List<byte>();
             try
             {
                 ret.AddRange(Header.ConvertToByte(reverseBytesOrder, ActionOnException));
@@ -64,18 +41,17 @@ namespace PcapngUtils.PcapNG
             }
             catch (Exception exc)
             {
-                if (ActionOnException != null)
-                    ActionOnException(exc);
+                ActionOnException?.Invoke(exc);
             }
             return ret.ToArray();
         }
         #endregion
 
-        public static HeaderWithInterfacesDescriptions CreateEmptyHeadeWithInterfacesDescriptions(bool reverseBytesOrder)
+        public static HeaderWithInterfacesDescriptions CreateEmptyHeaderWithInterfacesDescriptions(bool reverseBytesOrder)
         {
-            SectionHeaderBlock header = SectionHeaderBlock.GetEmptyHeader(reverseBytesOrder);
-            InterfaceDescriptionBlock emptyInterface = InterfaceDescriptionBlock.GetEmptyInterfaceDescription(reverseBytesOrder);
-            return new HeaderWithInterfacesDescriptions(header, new List<InterfaceDescriptionBlock>() { emptyInterface });
+            var header = SectionHeaderBlock.GetEmptyHeader(reverseBytesOrder);
+            var emptyInterface = InterfaceDescriptionBlock.GetEmptyInterfaceDescription(reverseBytesOrder);
+            return new HeaderWithInterfacesDescriptions(header, new List<InterfaceDescriptionBlock> { emptyInterface });
         }
     }
 }

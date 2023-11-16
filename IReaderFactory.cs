@@ -1,15 +1,9 @@
 ﻿using PcapngUtils.Common;
-using PcapngUtils.Extensions;
 using PcapngUtils.Pcap;
 using PcapngUtils.PcapNG;
 using PcapngUtils.PcapNG.BlockTypes;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PcapngUtils
 {
@@ -22,16 +16,15 @@ namespace PcapngUtils
         #region methods
         public static IReader GetReader(string path)
         {
-            Contract.Requires<ArgumentNullException>(!string.IsNullOrWhiteSpace(path), "path cannot be null or empty");
-            Contract.Requires<ArgumentException>(File.Exists(path), "file must exists");
+            if (!File.Exists(path)) throw new ArgumentException("file must exist");
             
-            UInt32 mask = 0;
-            using (FileStream stream = new FileStream(path, FileMode.Open))
+            uint mask;
+            using (var stream = new FileStream(path, FileMode.Open))
             {
-                using (BinaryReader binaryReader = new BinaryReader(stream))
+                using (var binaryReader = new BinaryReader(stream))
                 {
                     if (binaryReader.BaseStream.Length < 12)
-                        throw new ArgumentException(string.Format("[IReaderFactory.GetReader] file {0} is too short ", path));
+                        throw new ArgumentException($"[IReaderFactory.GetReader] file {path} is too short ");
 
                     mask = binaryReader.ReadUInt32();
                     if (mask == (uint)BaseBlock.Types.SectionHeader)
@@ -44,26 +37,26 @@ namespace PcapngUtils
 
             switch (mask)
             {       
-                case (uint)Pcap.SectionHeader.MagicNumbers.microsecondIdentical:
-                case (uint)Pcap.SectionHeader.MagicNumbers.microsecondSwapped:
-                case (uint)Pcap.SectionHeader.MagicNumbers.nanosecondSwapped:
-                case (uint)Pcap.SectionHeader.MagicNumbers.nanosecondIdentical:
+                case (uint)SectionHeader.MagicNumbers.microsecondIdentical:
+                case (uint)SectionHeader.MagicNumbers.microsecondSwapped:
+                case (uint)SectionHeader.MagicNumbers.nanosecondSwapped:
+                case (uint)SectionHeader.MagicNumbers.nanosecondIdentical:
                     {
                         IReader reader = new PcapReader(path);
                         return reader;
                     }
-                case (uint)PcapNG.BlockTypes.SectionHeaderBlock.MagicNumbers.Identical:
+                case (uint)SectionHeaderBlock.MagicNumbers.Identical:
                     {
                         IReader reader = new PcapNGReader(path, false);
                         return reader;
                     }
-                case (uint)PcapNG.BlockTypes.SectionHeaderBlock.MagicNumbers.Swapped:
+                case (uint)SectionHeaderBlock.MagicNumbers.Swapped:
                     {
                         IReader reader = new PcapNGReader(path, true);
                         return reader;
                     }
                 default:
-                    throw new ArgumentException(string.Format("[IReaderFactory.GetReader] file {0} is not PCAP/PCAPNG file", path));
+                    throw new ArgumentException($"[IReaderFactory.GetReader] file {path} is not PCAP/PCAPNG file");
             }
         }
    

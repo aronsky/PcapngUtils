@@ -1,13 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using PcapngUtils.Extensions;
-using System.Diagnostics.Contracts;
 using NUnit.Framework;
-using System.Diagnostics.CodeAnalysis;
 using PcapngUtils.Common;
 
 namespace PcapngUtils.Pcap
@@ -22,24 +17,19 @@ namespace PcapngUtils.Pcap
             [Test]
             public static void SectionHeader_ConvertToByte_Test()
             {
-                SectionHeader pre = SectionHeader.CreateEmptyHeader(false, false);
-                using (MemoryStream stream = new MemoryStream(pre.ConvertToByte()))
-                {
-                    using (BinaryReader br = new BinaryReader(stream))
-                    {
-                        SectionHeader post = SectionHeader.Parse(br);
-                        Assert.AreEqual(pre.MagicNumber, post.MagicNumber);
-                        Assert.AreEqual(pre.ReverseByteOrder, post.ReverseByteOrder);
-                        Assert.AreEqual(pre.MajorVersion, post.MajorVersion);
-                        Assert.AreEqual(pre.MinorVersion, post.MinorVersion);
-                        Assert.AreEqual(pre.LinkType, post.LinkType);
-                        Assert.AreEqual(pre.MaximumCaptureLength, post.MaximumCaptureLength);
-                        Assert.AreEqual(pre.NanoSecondResolution, post.NanoSecondResolution);
-                        Assert.AreEqual(pre.SignificantFigures, post.SignificantFigures);
-                        Assert.AreEqual(pre.TimezoneOffset, post.TimezoneOffset);
-                    }
-                }
-
+                var pre = CreateEmptyHeader(false, false);
+                using var stream = new MemoryStream(pre.ConvertToByte());
+                using var br = new BinaryReader(stream);
+                var post = Parse(br);
+                Assert.AreEqual(pre.MagicNumber, post.MagicNumber);
+                Assert.AreEqual(pre.ReverseByteOrder, post.ReverseByteOrder);
+                Assert.AreEqual(pre.MajorVersion, post.MajorVersion);
+                Assert.AreEqual(pre.MinorVersion, post.MinorVersion);
+                Assert.AreEqual(pre.LinkType, post.LinkType);
+                Assert.AreEqual(pre.MaximumCaptureLength, post.MaximumCaptureLength);
+                Assert.AreEqual(pre.NanoSecondResolution, post.NanoSecondResolution);
+                Assert.AreEqual(pre.SignificantFigures, post.SignificantFigures);
+                Assert.AreEqual(pre.TimezoneOffset, post.TimezoneOffset);
             }
         }
         #endregion
@@ -58,7 +48,7 @@ namespace PcapngUtils.Pcap
         /// <summary>
         /// version_major, version_minor: the version number of this file format (current version is 2.4)
         /// </summary>
-        public UInt16 MajorVersion
+        public ushort MajorVersion
         {
             get;
             set;
@@ -67,7 +57,7 @@ namespace PcapngUtils.Pcap
         /// <summary>
         /// version_major, version_minor: the version number of this file format (current version is 2.4)
         /// </summary>
-        public UInt16 MinorVersion
+        public ushort MinorVersion
         {
             get;
             set;
@@ -158,7 +148,7 @@ namespace PcapngUtils.Pcap
         {
             get
             {
-                return ((uint)this.MagicNumber).ToString("x");
+                return ((uint)MagicNumber).ToString("x");
             }
         }
 
@@ -166,27 +156,27 @@ namespace PcapngUtils.Pcap
 
         #region ctor
         
-        public SectionHeader(MagicNumbers magicNumber = MagicNumbers.microsecondIdentical, UInt16 majorVersion = 2, UInt16 minorVersion = 4, int thiszone =0 , uint sigfigs = 0, uint snaplen = 65535, LinkTypes linkType = LinkTypes.Ethernet)
+        public SectionHeader(MagicNumbers magicNumber = MagicNumbers.microsecondIdentical, ushort majorVersion = 2, ushort minorVersion = 4, int thiszone =0 , uint sigfigs = 0, uint snaplen = 65535, LinkTypes linkType = LinkTypes.Ethernet)
         {              
-            this.MagicNumber = magicNumber;
-            this.MajorVersion = majorVersion;
-            this.MinorVersion = minorVersion;
-            this.TimezoneOffset = thiszone;
-            this.SignificantFigures = sigfigs;
-            this.MaximumCaptureLength = snaplen;
-            this.LinkType = linkType;
+            MagicNumber = magicNumber;
+            MajorVersion = majorVersion;
+            MinorVersion = minorVersion;
+            TimezoneOffset = thiszone;
+            SignificantFigures = sigfigs;
+            MaximumCaptureLength = snaplen;
+            LinkType = linkType;
         }
 
         public static SectionHeader Parse(BinaryReader binaryReader)
         {
-            Contract.Requires<ArgumentNullException>(binaryReader != null, "binaryReader cannot be null");
-            bool reverseByteOrder = false; 
-            long positionInStream = binaryReader.BaseStream.Position;
-            uint tempMagicNumber = binaryReader.ReadUInt32();
+            var reverseByteOrder = false; 
+            var positionInStream = binaryReader.BaseStream.Position;
+            var tempMagicNumber = binaryReader.ReadUInt32();
             if (!Enum.IsDefined(typeof(MagicNumbers), tempMagicNumber))
-                throw new ArgumentException(string.Format("[SectionHeader.Parse] Unrecognized pcap magic number: {0}", tempMagicNumber.ToString("x")));
+                throw new ArgumentException(
+                    $"[SectionHeader.Parse] Unrecognized pcap magic number: {tempMagicNumber.ToString("x")}");
 
-            MagicNumbers magicNumber = (MagicNumbers)tempMagicNumber;
+            var magicNumber = (MagicNumbers)tempMagicNumber;
 
             if (magicNumber == MagicNumbers.nanosecondIdentical || magicNumber == MagicNumbers.microsecondIdentical)
                 reverseByteOrder = false;
@@ -194,17 +184,18 @@ namespace PcapngUtils.Pcap
                 reverseByteOrder = true;
            
             
-            ushort major = binaryReader.ReadUInt16().ReverseByteOrder(reverseByteOrder);
-            ushort minor = binaryReader.ReadUInt16().ReverseByteOrder(reverseByteOrder);
-            int thiszone = binaryReader.ReadInt32().ReverseByteOrder(reverseByteOrder);
-            uint sigfigs = binaryReader.ReadUInt32().ReverseByteOrder(reverseByteOrder);
-            uint snaplen = binaryReader.ReadUInt32().ReverseByteOrder(reverseByteOrder);
-            uint linktype = binaryReader.ReadUInt32().ReverseByteOrder(reverseByteOrder);
+            var major = binaryReader.ReadUInt16().ReverseByteOrder(reverseByteOrder);
+            var minor = binaryReader.ReadUInt16().ReverseByteOrder(reverseByteOrder);
+            var thiszone = binaryReader.ReadInt32().ReverseByteOrder(reverseByteOrder);
+            var sigfigs = binaryReader.ReadUInt32().ReverseByteOrder(reverseByteOrder);
+            var snaplen = binaryReader.ReadUInt32().ReverseByteOrder(reverseByteOrder);
+            var linktype = binaryReader.ReadUInt32().ReverseByteOrder(reverseByteOrder);
 
             if (!Enum.IsDefined(typeof(LinkTypes), (ushort)linktype))
-                throw new ArgumentException(string.Format("[SectionHeader.Parse] Invalid LinkTypes: {0}, block begin on position {1} ", linktype, positionInStream));
-            LinkTypes LinkType = (LinkTypes)linktype;
-            SectionHeader header = new SectionHeader(magicNumber, major, minor, thiszone, sigfigs, snaplen, LinkType);
+                throw new ArgumentException(
+                    $"[SectionHeader.Parse] Invalid LinkTypes: {linktype}, block begin on position {positionInStream} ");
+            var LinkType = (LinkTypes)linktype;
+            var header = new SectionHeader(magicNumber, major, minor, thiszone, sigfigs, snaplen, LinkType);
             return header;             
         }
 
@@ -223,8 +214,8 @@ namespace PcapngUtils.Pcap
         #region method
         public byte[] ConvertToByte()
         {
-            List<byte> ret = new List<byte>();
-            bool reverseByteOrder = this.ReverseByteOrder;
+            var ret = new List<byte>();
+            var reverseByteOrder = ReverseByteOrder;
             ret.AddRange(BitConverter.GetBytes((uint)MagicNumber));
             ret.AddRange(BitConverter.GetBytes(MajorVersion.ReverseByteOrder(reverseByteOrder)));
             ret.AddRange(BitConverter.GetBytes(MinorVersion.ReverseByteOrder(reverseByteOrder)));

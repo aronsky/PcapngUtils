@@ -1,10 +1,8 @@
 ﻿using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace PcapngUtils.PcapNG.CommonTypes
 {
@@ -18,24 +16,24 @@ namespace PcapngUtils.PcapNG.CommonTypes
             [Test]
             public static void HashBlock_InvalidEnum_Test()
             {
-                string md5Hash = "f59b7efafd800e27b47a488d30615c73";
-                byte[] utf8Hash = System.Text.Encoding.UTF8.GetBytes(md5Hash);
-                byte[] test = { 5 };
+                var md5Hash = "f59b7efafd800e27b47a488d30615c73";
+                var utf8Hash = Encoding.UTF8.GetBytes(md5Hash);
+                byte[]? test = { 5 };
                 test = test.Concat(utf8Hash).ToArray();
 
-                HashBlock hashBlock = new HashBlock(test);
+                var hashBlock = new HashBlock(test);
                 Assert.AreEqual(hashBlock.Algorithm, HashAlgorithm.Invalid);
             }
 
             [Test]
             public static void HashBlock_Md5Test_Test()
             {
-                string md5Hash = "f59b7efafd800e27b47a488d30615c73";
-                byte[] utf8Hash = System.Text.Encoding.UTF8.GetBytes(md5Hash);
-                byte[] test = { (byte)HashAlgorithm.Md5 };
+                var md5Hash = "f59b7efafd800e27b47a488d30615c73";
+                var utf8Hash = Encoding.UTF8.GetBytes(md5Hash);
+                byte[]? test = { (byte)HashAlgorithm.Md5 };
                 test = test.Concat(utf8Hash).ToArray();
 
-                HashBlock hashBlock = new HashBlock(test);
+                var hashBlock = new HashBlock(test);
                 Assert.AreEqual(hashBlock.Algorithm, HashAlgorithm.Md5);
                 Assert.AreEqual(hashBlock.StringValue, md5Hash);
             }
@@ -71,10 +69,9 @@ namespace PcapngUtils.PcapNG.CommonTypes
         {
             get
             {
-                Contract.Requires<ArgumentNullException>(Value != null, "Value cannot be null");
                 try
                 {
-                    string ret = UTF8Encoding.UTF8.GetString(this.Value);
+                    var ret = Encoding.UTF8.GetString(Value);
                     return ret;
                 }
                 catch
@@ -86,35 +83,33 @@ namespace PcapngUtils.PcapNG.CommonTypes
         #endregion
         
         #region ctor
-        public HashBlock(byte[] inputArray)
+        public HashBlock(IReadOnlyList<byte> inputArray)
         {
-            Contract.Requires<ArgumentNullException>(inputArray != null, "inputArray cannot be null");
-            Contract.Requires<ArgumentException>(inputArray.Length >= 2, "HashBlock, inputArray length < 2");           
+            if (inputArray.Count < 2) throw new ArgumentException("HashBlock, inputArray length < 2");
 
-            byte tempAlgorithm = inputArray[0];
+            var tempAlgorithm = inputArray[0];
             Algorithm = Enum.IsDefined(typeof(HashAlgorithm), tempAlgorithm) ? (HashAlgorithm)tempAlgorithm : HashAlgorithm.Invalid;
-            Value = inputArray.Skip(1).Take(inputArray.Length - 1).ToArray();
+            Value = inputArray.Skip(1).Take(inputArray.Count - 1).ToArray();
         }   
         #endregion       
 
         #region method
         public byte[] ConvertToByte()
         {
-            Contract.Requires<ArgumentNullException>(Value != null, "Value cannot be null");
-            List<byte> ret = new List<byte>();
+            var ret = new List<byte>();
             ret.Add((byte)Algorithm);
             ret.AddRange(Value);
             return ret.ToArray();
         }
         
         
-        public override bool Equals(Object obj)
+        public override bool Equals(object? obj)
         {     
             if (obj == null || GetType() != obj.GetType())
                 return false;
 
-            HashBlock p = (HashBlock)obj;
-            return (this.Algorithm == p.Algorithm) && (this.Value == p.Value);
+            var p = (HashBlock)obj;
+            return (Algorithm == p.Algorithm) && (Value == p.Value);
         }
 
         public override int GetHashCode()

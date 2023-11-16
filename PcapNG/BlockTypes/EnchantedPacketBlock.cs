@@ -1,13 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using PcapngUtils.PcapNG;
 using PcapngUtils.PcapNG.CommonTypes;
-using PcapngUtils.PcapNG.BlockTypes;
 using PcapngUtils.Extensions;
-using System.Diagnostics.Contracts;
 using PcapngUtils.PcapNG.OptionTypes;
 using NUnit.Framework;
 using PcapngUtils.Common;
@@ -24,29 +19,29 @@ namespace PcapngUtils.PcapNG.BlockTypes
             [TestCase(false)]
             public static void EnchantedPacketBlock_ConvertToByte_Test(bool reorder)
             {
-                EnchantedPacketBlock prePacketBlock, postPacketBlock;
+                EnchantedPacketBlock? prePacketBlock;
                 byte[] byteblock = { 6, 0, 0, 0, 132, 0, 0, 0, 0, 0, 0, 0, 12, 191, 4, 0, 118, 176, 176, 8, 98, 0, 0, 0, 98, 0, 0, 0, 0, 0, 94, 0, 1, 177, 0, 33, 40, 5, 41, 186, 8, 0, 69, 0, 0, 84, 48, 167, 0, 0, 255, 1, 3, 72, 192, 168, 177, 160, 10, 64, 11, 49, 8, 0, 10, 251, 67, 168, 0, 0, 79, 161, 27, 41, 0, 2, 83, 141, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 0, 0, 132, 0, 0, 0 };
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        AbstractBlock block = AbstractBlockFactory.ReadNextBlock(binaryReader, false, null);
+                        var block = AbstractBlockFactory.ReadNextBlock(binaryReader, false, null);
                         Assert.IsNotNull(block);
                         prePacketBlock = block as EnchantedPacketBlock;
                         Assert.IsNotNull(prePacketBlock);
-                        byteblock = prePacketBlock.ConvertToByte(reorder, null);
+                        byteblock = prePacketBlock!.ConvertToByte(reorder, null);
                     }
                 }
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        AbstractBlock block = AbstractBlockFactory.ReadNextBlock(binaryReader, reorder, null);
+                        var block = AbstractBlockFactory.ReadNextBlock(binaryReader, reorder, null);
                         Assert.IsNotNull(block);
-                        postPacketBlock = block as EnchantedPacketBlock;
+                        var postPacketBlock = block as EnchantedPacketBlock;
                         Assert.IsNotNull(postPacketBlock);
 
-                        Assert.AreEqual(prePacketBlock.BlockType, postPacketBlock.BlockType);
+                        Assert.AreEqual(prePacketBlock.BlockType, postPacketBlock!.BlockType);
                         Assert.AreEqual(prePacketBlock.Data, postPacketBlock.Data);
                         Assert.AreEqual(prePacketBlock.InterfaceID, postPacketBlock.InterfaceID);
                         Assert.AreEqual(prePacketBlock.Microseconds, postPacketBlock.Microseconds);
@@ -66,12 +61,12 @@ namespace PcapngUtils.PcapNG.BlockTypes
         #region IPacket
         public ulong Seconds
         {
-            get { return this.Timestamp.Seconds; }
+            get { return Timestamp.Seconds; }
         }
 
         public ulong Microseconds
         {
-            get { return this.Timestamp.Microseconds; }
+            get { return Timestamp.Microseconds; }
         }
         #endregion
 
@@ -149,7 +144,6 @@ namespace PcapngUtils.PcapNG.BlockTypes
             }
             set
             {
-                Contract.Requires<ArgumentNullException>(value != null, "Data cannot be null");
                 data = value;
             }
         }
@@ -168,52 +162,44 @@ namespace PcapngUtils.PcapNG.BlockTypes
             }
             set
             {
-                Contract.Requires<ArgumentNullException>(value != null, "Options cannot be null");
                 options = value;
             }
         } 
         #endregion
 
         #region ctor
-        public static EnchantedPacketBlock Parse(BaseBlock baseBlock, Action<Exception> ActionOnException)
-        {                           
-            Contract.Requires<ArgumentNullException>(baseBlock != null, "BaseBlock cannot be null");
-            Contract.Requires<ArgumentNullException>(baseBlock.Body != null, "BaseBlock.Body cannot be null");
-            Contract.Requires<ArgumentException>(baseBlock.BlockType == BaseBlock.Types.EnhancedPacket, "Invalid packet type");    
+        public static EnchantedPacketBlock Parse(BaseBlock baseBlock, Action<Exception>? ActionOnException)
+        {
+            if (baseBlock.BlockType != BaseBlock.Types.EnhancedPacket)
+                throw new ArgumentException("Invalid packet type");
 
-            long positionInStream = baseBlock.PositionInStream;
-            using (Stream stream = new MemoryStream(baseBlock.Body))
+            var positionInStream = baseBlock.PositionInStream;
+            using Stream stream = new MemoryStream(baseBlock.Body);
+            using var binaryReader = new BinaryReader(stream);
+            var interfaceID = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var timestamp = binaryReader.ReadBytes(8);
+            var timestampHelper = new TimestampHelper(timestamp, baseBlock.ReverseByteOrder);
+            var capturedLength = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var packetLength = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var data = binaryReader.ReadBytes(capturedLength);
+            if (data.Length < capturedLength)
+                throw new EndOfStreamException("Unable to read beyond the end of the stream");
+            var remainderLength = capturedLength % BaseBlock.AlignmentBoundary;
+            if (remainderLength > 0)
             {
-                using (BinaryReader binaryReader = new BinaryReader(stream))
-                {
-                    int interfaceID = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
-                    byte[] timestamp = binaryReader.ReadBytes(8);
-                    TimestampHelper timestampHelper = new TimestampHelper(timestamp, baseBlock.ReverseByteOrder);
-                    int capturedLength = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
-                    int packetLength = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
-                    byte [] data = binaryReader.ReadBytes(capturedLength);
-                    if (data.Length < capturedLength)
-                        throw new EndOfStreamException("Unable to read beyond the end of the stream");
-                    int remainderLength = (int)capturedLength % BaseBlock.AlignmentBoundary;
-                    if (remainderLength > 0)
-                    {
-                        int paddingLength = BaseBlock.AlignmentBoundary - remainderLength;
-                        binaryReader.ReadBytes(paddingLength);
-                    }
-                    EnchantedPacketOption option = EnchantedPacketOption.Parse(binaryReader, baseBlock.ReverseByteOrder, ActionOnException);
-                    EnchantedPacketBlock enchantedBlock = new EnchantedPacketBlock(interfaceID, timestampHelper, packetLength, data, option, positionInStream);
-                    return enchantedBlock;
-                }   
+                var paddingLength = BaseBlock.AlignmentBoundary - remainderLength;
+                binaryReader.ReadBytes(paddingLength);
             }
+            var option = EnchantedPacketOption.Parse(binaryReader, baseBlock.ReverseByteOrder, ActionOnException);
+            var enchantedBlock = new EnchantedPacketBlock(interfaceID, timestampHelper, packetLength, data, option, positionInStream);
+            return enchantedBlock;
         }
 
         public static EnchantedPacketBlock CreateEnchantedPacketFromIPacket(IPacket packet, Action<Exception> ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(packet != null, "packet cannot be null");
-            Contract.Requires<ArgumentNullException>(packet.Data != null, "packet.Data cannot be null");
-            TimestampHelper timestampHelper = new TimestampHelper(packet.Seconds, packet.Microseconds);
+            var timestampHelper = new TimestampHelper(packet.Seconds, packet.Microseconds);
 
-            EnchantedPacketBlock enchantedBlock = new EnchantedPacketBlock(0, timestampHelper, packet.Data.Length, packet.Data, new EnchantedPacketOption(), 0);
+            var enchantedBlock = new EnchantedPacketBlock(0, timestampHelper, packet.Data.Length, packet.Data, new EnchantedPacketOption(), 0);
             return enchantedBlock;             
         }
         
@@ -228,35 +214,31 @@ namespace PcapngUtils.PcapNG.BlockTypes
         /// </summary>        
         public EnchantedPacketBlock(int InterfaceID, TimestampHelper Timestamp, int PacketLength, byte[] Data, EnchantedPacketOption Options, long PositionInStream = 0)
         {
-            Contract.Requires<ArgumentNullException>(Timestamp != null, "Timestamp cannot be null");
-            Contract.Requires<ArgumentNullException>(Options != null, "Options cannot be null");
-            Contract.Requires<ArgumentNullException>(Data != null, "Data cannot be null");
-
             this.InterfaceID = InterfaceID;
             this.Timestamp = Timestamp;
             this.PacketLength = PacketLength;
-            this.data = Data;
-            this.options = Options;
+            data = Data;
+            options = Options;
             this.PositionInStream = PositionInStream;
         }
         #endregion        
 
         #region method
-        protected override BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception> ActionOnException)
+        protected override BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            List<byte> body = new List<byte>();
+            var body = new List<byte>();
             body.AddRange(BitConverter.GetBytes(InterfaceID.ReverseByteOrder(reverseByteOrder)));
             body.AddRange(Timestamp.ConvertToByte(reverseByteOrder)); 
             body.AddRange(BitConverter.GetBytes(Data.Length.ReverseByteOrder(reverseByteOrder)));
             body.AddRange(BitConverter.GetBytes(PacketLength.ReverseByteOrder(reverseByteOrder)));
             body.AddRange(Data);
-            int remainderLength = (BaseBlock.AlignmentBoundary - Data.Length % BaseBlock.AlignmentBoundary) % BaseBlock.AlignmentBoundary;
-            for (int i = 0; i < remainderLength; i++)
+            var remainderLength = (BaseBlock.AlignmentBoundary - Data.Length % BaseBlock.AlignmentBoundary) % BaseBlock.AlignmentBoundary;
+            for (var i = 0; i < remainderLength; i++)
             {
                 body.Add(0);
             }
             body.AddRange(Options.ConvertToByte(reverseByteOrder, ActionOnException));
-            BaseBlock baseBlock = new BaseBlock(this.BlockType,body.ToArray(),reverseByteOrder,0);
+            var baseBlock = new BaseBlock(BlockType,body.ToArray(),reverseByteOrder,0);
             return baseBlock;
         }   
         #endregion

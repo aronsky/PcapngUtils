@@ -1,6 +1,4 @@
 ﻿using PcapngUtils.Common;
-using System;
-using System.Diagnostics.Contracts;
 
 
 namespace PcapngUtils.Pcap
@@ -14,7 +12,7 @@ namespace PcapngUtils.Pcap
         /// a more optimized way to get this timestamp value. If this timestamp isn't based on GMT (UTC), use thiszone from the global header 
         /// for adjustments.
         /// </summary>
-        public UInt64 Seconds
+        public ulong Seconds
         {
             get;
             set;
@@ -26,7 +24,7 @@ namespace PcapngUtils.Pcap
         /// Beware: this value shouldn't reach 1 second (in regular pcap files 1 000 000; in nanosecond-resolution files, 1 000 000 000); 
         /// in this case ts_sec must be increased instead!
         /// </summary>
-        public UInt64 Microseconds
+        public ulong Microseconds
         {
             get;
             set;
@@ -50,13 +48,12 @@ namespace PcapngUtils.Pcap
             get; 
             set;
         }
-        public PcapPacket(UInt64 secs, UInt64 usecs, byte[] data,long positionInStream)
+        public PcapPacket(ulong secs, ulong usecs, byte[] data,long positionInStream)
         {
-            Contract.Requires<ArgumentNullException>(data != null, "data cannot be null");
-            this.Seconds = secs;
-            this.Microseconds = usecs;
-            this.Data = data;
-            this.PositionInStream = positionInStream;
+            Seconds = secs;
+            Microseconds = usecs;
+            Data = data;
+            PositionInStream = positionInStream;
         } 
     }
 }

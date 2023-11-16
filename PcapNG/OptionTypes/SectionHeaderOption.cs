@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Diagnostics.Contracts;
 using System.IO;
-using PcapngUtils.Extensions;
 using NUnit.Framework;
 
 namespace PcapngUtils.PcapNG.OptionTypes
@@ -22,18 +20,18 @@ namespace PcapngUtils.PcapNG.OptionTypes
             [ContractVerification(false)]
             public static void SectionHeaderOption_ConvertToByte_Test(bool reorder)
             {
-                SectionHeaderOption preOption = new SectionHeaderOption();
+                var preOption = new SectionHeaderOption();
                 SectionHeaderOption postOption;
                 preOption.Comment = "Test Comment";
                 preOption.Hardware = "x86 Personal Computer";
                 preOption.OperatingSystem = "Windows 7";
                 preOption.UserApplication = "PcapngUtils";
-                byte[] preOptionByte = preOption.ConvertToByte(reorder, null);
-                using (MemoryStream stream = new MemoryStream(preOptionByte))
+                var preOptionByte = preOption.ConvertToByte(reorder, null);
+                using (var stream = new MemoryStream(preOptionByte))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        postOption = SectionHeaderOption.Parse(binaryReader, reorder, null);
+                        postOption = Parse(binaryReader, reorder, null);
                     }
                 }
 
@@ -61,7 +59,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// A UTF-8 string containing a comment that is associated to the current block.
         /// </summary>
-        public string Comment
+        public string? Comment
         {
             get;
             set;
@@ -70,7 +68,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// An UTF-8 string containing the description of the hardware used to create this section.
         /// </summary>
-        public string Hardware
+        public string? Hardware
         {
             get;
             set;
@@ -79,7 +77,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// An UTF-8 string containing the name of the operating system used to create this section
         /// </summary>
-        public string OperatingSystem
+        public string? OperatingSystem
         {
             get;
             set;
@@ -88,7 +86,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// An UTF-8 string containing the name of the application used to create this section.
         /// </summary>
-        public string UserApplication
+        public string? UserApplication
         {
             get;
             set;
@@ -96,7 +94,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         #endregion
 
         #region ctor
-        public SectionHeaderOption(string Comment = null, string Hardware = null, string OperatingSystem = null, string UserApplication = null)
+        public SectionHeaderOption(string? Comment = null, string? Hardware = null, string? OperatingSystem = null, string? UserApplication = null)
         {
             this.Comment = Comment;
             this.Hardware = Hardware;
@@ -106,82 +104,75 @@ namespace PcapngUtils.PcapNG.OptionTypes
         #endregion
 
         #region method
-        public static SectionHeaderOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception> ActionOnException)
+        public static SectionHeaderOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(binaryReader != null, "binaryReader cannot be null");
-
-            SectionHeaderOption option = new SectionHeaderOption();
-            List<KeyValuePair<ushort, byte[]>> optionsList = EkstractOptions(binaryReader, reverseByteOrder, ActionOnException);
-            if (optionsList.Any())
+            var option = new SectionHeaderOption();
+            var optionsList = ExtractOptions(binaryReader, reverseByteOrder, ActionOnException);
+            if (!optionsList.Any()) return option;
+            foreach (var item in optionsList)
             {
-                foreach (var item in optionsList)
+                try
                 {
-                    try
+                    switch (item.Key)
                     {
-                        switch (item.Key)
-                        {
-                            case (ushort)SectionHeaderOptionCode.CommentCode:
-                                option.Comment = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)SectionHeaderOptionCode.HardwareCode:
-                                option.Hardware = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)SectionHeaderOptionCode.OperatingSystemCode:
-                                option.OperatingSystem = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)SectionHeaderOptionCode.UserApplicationCode:
-                                option.UserApplication = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)SectionHeaderOptionCode.EndOfOptionsCode:
-                            default:
-                                break;
-                        }
+                        case (ushort)SectionHeaderOptionCode.CommentCode:
+                            option.Comment = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)SectionHeaderOptionCode.HardwareCode:
+                            option.Hardware = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)SectionHeaderOptionCode.OperatingSystemCode:
+                            option.OperatingSystem = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)SectionHeaderOptionCode.UserApplicationCode:
+                            option.UserApplication = Encoding.UTF8.GetString(item.Value);
+                            break;
                     }
-                    catch (Exception exc)
-                    {
-                        if (ActionOnException != null)
-                            ActionOnException(exc);
-                    }
-                }   
+                }
+                catch (Exception exc)
+                {
+                    if (ActionOnException != null)
+                        ActionOnException(exc);
+                }
             }
             return option;
         }
 
-        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception> ActionOnException)
+        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
 
-            List<byte> ret = new List<byte>();
+            var ret = new List<byte>();
 
             if (Comment != null)
             {
-                byte[] comentValue = UTF8Encoding.UTF8.GetBytes(Comment);
-                if (comentValue.Length <= UInt16.MaxValue)
+                var comentValue = Encoding.UTF8.GetBytes(Comment);
+                if (comentValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)SectionHeaderOptionCode.CommentCode, comentValue, reverseByteOrder, ActionOnException));
             }
 
             if (Hardware != null)
             {
-                byte[] hardwareValue = UTF8Encoding.UTF8.GetBytes(Hardware);
-                if (hardwareValue.Length <= UInt16.MaxValue)
+                var hardwareValue = Encoding.UTF8.GetBytes(Hardware);
+                if (hardwareValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)SectionHeaderOptionCode.HardwareCode, hardwareValue, reverseByteOrder, ActionOnException));
             }
 
             if (OperatingSystem != null)
             {
-                byte[] systemValue = UTF8Encoding.UTF8.GetBytes(OperatingSystem);
-                if (systemValue.Length <= UInt16.MaxValue)
+                var systemValue = Encoding.UTF8.GetBytes(OperatingSystem);
+                if (systemValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)SectionHeaderOptionCode.OperatingSystemCode, systemValue, reverseByteOrder, ActionOnException));
             }
 
             if (UserApplication != null)
             {
-                byte[] userAppValue = UTF8Encoding.UTF8.GetBytes(UserApplication);
-                if (userAppValue.Length <= UInt16.MaxValue)
+                var userAppValue = Encoding.UTF8.GetBytes(UserApplication);
+                if (userAppValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)SectionHeaderOptionCode.UserApplicationCode, userAppValue, reverseByteOrder, ActionOnException));
             }
 
 
-            ret.AddRange(ConvertOptionFieldToByte((ushort)SectionHeaderOptionCode.EndOfOptionsCode, new byte[0], reverseByteOrder, ActionOnException));
+            ret.AddRange(ConvertOptionFieldToByte((ushort)SectionHeaderOptionCode.EndOfOptionsCode, Array.Empty<byte>(), reverseByteOrder, ActionOnException));
             return ret.ToArray();
         }
         #endregion

@@ -1,9 +1,5 @@
 ﻿using NUnit.Framework;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PcapngUtils.Extensions
 {    
@@ -16,8 +12,8 @@ namespace PcapngUtils.Extensions
             [Test]
             public static void ReverseByteOrderExtension_UInt16_Test()
             {
-                UInt16 origin = 0xABCD;
-                UInt16 test = origin.ReverseByteOrder(false);
+                ushort origin = 0xABCD;
+                var test = origin.ReverseByteOrder(false);
                 Assert.AreEqual(test, origin);
                 test = origin.ReverseByteOrder(true);
                 Assert.AreEqual(test, 0xCDAB);
@@ -26,8 +22,8 @@ namespace PcapngUtils.Extensions
             [Test]
             public static void ReverseByteOrderExtension_UInt32_Test()
             {
-                UInt32 origin = 0xABCDEF01;
-                UInt32 test = origin.ReverseByteOrder(false);
+                var origin = 0xABCDEF01;
+                uint test = origin.ReverseByteOrder(false);
                 Assert.AreEqual(test, origin);
                 test = origin.ReverseByteOrder(true);
                 Assert.AreEqual(test, 0x01EFCDAB);
@@ -36,8 +32,8 @@ namespace PcapngUtils.Extensions
             [Test]
             public static void ReverseByteOrderExtension_UInt64_Test()
             {
-                UInt64 origin = 0x0123456789ABCDEF;
-                UInt64 test = origin.ReverseByteOrder(false);
+                ulong origin = 0x0123456789ABCDEF;
+                ulong test = origin.ReverseByteOrder(false);
                 Assert.AreEqual(test, origin);
                 test = origin.ReverseByteOrder(true);
                 Assert.AreEqual(test, 0xEFCDAB8967452301);
@@ -46,8 +42,8 @@ namespace PcapngUtils.Extensions
             [Test]
             public static void ReverseByteOrderExtension_Int16_Test()
             {
-                Int16 origin = 0x3210;
-                Int16 test = origin.ReverseByteOrder(false);
+                short origin = 0x3210;
+                short test = origin.ReverseByteOrder(false);
                 Assert.AreEqual(test, origin);
                 test = origin.ReverseByteOrder(true);
                 Assert.AreEqual(test, 0x1032);
@@ -56,8 +52,8 @@ namespace PcapngUtils.Extensions
             [Test]
             public static void ReverseByteOrderExtension_Int32_Test()
             {
-                Int32 origin = 0x76543210;
-                Int32 test = origin.ReverseByteOrder(false);
+                var origin = 0x76543210;
+                int test = origin.ReverseByteOrder(false);
                 Assert.AreEqual(test, origin);
                 test = origin.ReverseByteOrder(true);
                 Assert.AreEqual(test, 0x10325476);
@@ -66,8 +62,8 @@ namespace PcapngUtils.Extensions
             [Test]
             public static void ReverseByteOrderExtension_Int64_Test()
             {
-                Int64 origin = 0x7654321076543210;
-                Int64 test = origin.ReverseByteOrder(false);
+                var origin = 0x7654321076543210;
+                long test = origin.ReverseByteOrder(false);
                 Assert.AreEqual(test, origin);
                 test = origin.ReverseByteOrder(true);
                 Assert.AreEqual(test, 0x1032547610325476);
@@ -75,73 +71,73 @@ namespace PcapngUtils.Extensions
         }
         #endregion
         #region Extenstion method
-        public static UInt32 ReverseByteOrder(this UInt32 value,bool reverseByteOrder)
+        public static uint ReverseByteOrder(this uint value,bool reverseByteOrder)
         {
             if (!reverseByteOrder)
                 return value;
             else
             {
-                byte[] bytes = BitConverter.GetBytes(value); 
+                var bytes = BitConverter.GetBytes(value); 
                 Array.Reverse(bytes);
                 return BitConverter.ToUInt32(bytes, 0);
             }
         }
 
-        public static Int32 ReverseByteOrder(this Int32 value, bool reverseByteOrder)
+        public static int ReverseByteOrder(this int value, bool reverseByteOrder)
         {
             if (!reverseByteOrder)
                 return value;
             else
             {
-                byte[] bytes = BitConverter.GetBytes(value);
+                var bytes = BitConverter.GetBytes(value);
                 Array.Reverse(bytes);
                 return BitConverter.ToInt32(bytes, 0);
             }
         }
 
-        public static UInt16 ReverseByteOrder(this UInt16 value, bool reverseByteOrder)
+        public static ushort ReverseByteOrder(this ushort value, bool reverseByteOrder)
         {
             if (!reverseByteOrder)
                 return value;
             else
             {
-                byte[] bytes = BitConverter.GetBytes(value);
+                var bytes = BitConverter.GetBytes(value);
                 Array.Reverse(bytes);
                 return BitConverter.ToUInt16(bytes, 0);
             }
         }
 
-        public static Int16 ReverseByteOrder(this Int16 value, bool reverseByteOrder)
+        public static short ReverseByteOrder(this short value, bool reverseByteOrder)
         {
             if (!reverseByteOrder)                
                 return value;
             else
             {
-                byte[] bytes = BitConverter.GetBytes(value);
+                var bytes = BitConverter.GetBytes(value);
                 Array.Reverse(bytes);
                 return BitConverter.ToInt16(bytes, 0);
             }
         }
 
-        public static UInt64 ReverseByteOrder(this UInt64 value, bool reverseByteOrder)
+        public static ulong ReverseByteOrder(this ulong value, bool reverseByteOrder)
         {
             if (!reverseByteOrder)
                 return value;
             else
             {
-                byte[] bytes = BitConverter.GetBytes(value);
+                var bytes = BitConverter.GetBytes(value);
                 Array.Reverse(bytes);
                 return BitConverter.ToUInt64(bytes, 0);
             }
         }
 
-        public static Int64 ReverseByteOrder(this Int64 value, bool reverseByteOrder)
+        public static long ReverseByteOrder(this long value, bool reverseByteOrder)
         {
             if (!reverseByteOrder)
                 return value;
             else
             {
-                byte[] bytes = BitConverter.GetBytes(value);
+                var bytes = BitConverter.GetBytes(value);
                 Array.Reverse(bytes);
                 return BitConverter.ToInt64(bytes, 0);
             }

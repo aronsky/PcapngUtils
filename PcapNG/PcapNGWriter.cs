@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using PcapngUtils.Extensions;
-using System.Diagnostics.Contracts;
 using PcapngUtils.PcapNG.BlockTypes;
 using System.Linq;
 using PcapngUtils.Common;
@@ -13,12 +11,11 @@ namespace PcapngUtils.PcapNG
     public sealed class PcapNGWriter : Disposable, IWriter
     {
         #region event & delegate
-        public event CommonDelegates.ExceptionEventDelegate OnExceptionEvent;
+        public event CommonDelegates.ExceptionEventDelegate? OnExceptionEvent;
 
         private void OnException(Exception exception)
         {
-            Contract.Requires<ArgumentNullException>(exception != null, "exception cannot be null or empty");
-            CommonDelegates.ExceptionEventDelegate handler = OnExceptionEvent;
+            var handler = OnExceptionEvent;
             if (handler != null)
                 handler(this, exception);
             else
@@ -41,47 +38,40 @@ namespace PcapngUtils.PcapNG
         #endregion
 
         #region ctor
-        public PcapNGWriter(string path, bool reverseByteOrder = false)
+        public PcapNGWriter(string path) : this(path, 
+            new List<HeaderWithInterfacesDescriptions> {HeaderWithInterfacesDescriptions.CreateEmptyHeaderWithInterfacesDescriptions(false)})
+        { }
+        
+        public PcapNGWriter(string path, List<HeaderWithInterfacesDescriptions> headersWithInterface) : this(new FileStream(path, FileMode.Create), headersWithInterface)
+        { }
+
+        public PcapNGWriter(Stream stream) : this(stream,
+            new List<HeaderWithInterfacesDescriptions> {HeaderWithInterfacesDescriptions.CreateEmptyHeaderWithInterfacesDescriptions(false)})
+        { }
+
+        public PcapNGWriter(Stream stream, List<HeaderWithInterfacesDescriptions> headersWithInterface)
         {
-            Contract.Requires<ArgumentNullException>(!string.IsNullOrWhiteSpace(path), "path cannot be null or empty");
-            Contract.Requires<ArgumentException>(!File.Exists(path), "file exists");
-            HeaderWithInterfacesDescriptions header = HeaderWithInterfacesDescriptions.CreateEmptyHeadeWithInterfacesDescriptions(false);
-            Initialize(new FileStream(path, FileMode.Create), new List<HeaderWithInterfacesDescriptions>(){header}) ;
-        }  
-
-        public PcapNGWriter(string path, List<HeaderWithInterfacesDescriptions> headersWithInterface)
-        {
-            Contract.Requires<ArgumentNullException>(!string.IsNullOrWhiteSpace(path), "path cannot be null or empty");
-            Contract.Requires<ArgumentException>(!File.Exists(path), "file exists");
-
-            Contract.Requires<ArgumentNullException>(headersWithInterface != null, "headersWithInterface list cannot be null");
-
-            Contract.Requires<ArgumentException>(headersWithInterface.Count >= 1, "headersWithInterface list is empty");
-
-            Initialize(new FileStream(path, FileMode.Create), headersWithInterface);
+            if (headersWithInterface.Count < 1) throw new ArgumentException("headersWithInterface list is empty");
+            this.stream = stream;
+            binaryWriter = new BinaryWriter(stream);
+            Initialize(headersWithInterface);
         }
 
-        private void Initialize(Stream stream, List<HeaderWithInterfacesDescriptions> headersWithInterface)
-         {                     
-             Contract.Requires<ArgumentNullException>(stream != null, "stream cannot be null");
-             Contract.Requires<Exception>(stream.CanWrite == true, "Cannot write to stream");
-             Contract.Requires<ArgumentNullException>(headersWithInterface != null, "headersWithInterface list cannot be null");
+        private void Initialize(List<HeaderWithInterfacesDescriptions> headersWithInterface)
+        {
+            if (!stream.CanWrite) throw new Exception("Cannot write to stream");
 
-             Contract.Requires<ArgumentException>(headersWithInterface.Count >= 1, "headersWithInterface list is empty");
+            if (headersWithInterface.Count < 1) throw new ArgumentException("headersWithInterface list is empty");
 
-             this.headersWithInterface = headersWithInterface;
-             this.stream = stream;
-             binaryWriter = new BinaryWriter(stream);
-             Action<Exception> ReThrowException = (exc) =>
-             {
-                 ExceptionDispatchInfo.Capture(exc).Throw();
-             };
-             foreach (var header in headersWithInterface)
-             {
-                 binaryWriter.Write(header.ConvertToByte(header.Header.ReverseByteOrder, ReThrowException));          
-             }
+            this.headersWithInterface = headersWithInterface;
+            binaryWriter = new BinaryWriter(stream);
+            Action<Exception> reThrowException = (exc) => { ExceptionDispatchInfo.Capture(exc).Throw(); };
+            foreach (var header in headersWithInterface)
+            {
+                binaryWriter.Write(header.ConvertToByte(header.Header.ReverseByteOrder, reThrowException));
+            }
                
-         }           
+        }           
         #endregion
         /// <summary>
         /// Close stream, dispose members
@@ -95,29 +85,23 @@ namespace PcapngUtils.PcapNG
         {
             try
             {
-                AbstractBlock abstractBlock =null;
-                if (packet is AbstractBlock)
-                {
-                    abstractBlock = packet as AbstractBlock;                     
-                }
-                else
-                {
-                    abstractBlock = EnchantedPacketBlock.CreateEnchantedPacketFromIPacket(packet, OnException);
-                }
+                var abstractBlock = packet as AbstractBlock ?? EnchantedPacketBlock.CreateEnchantedPacketFromIPacket(packet, OnException);
 
-                HeaderWithInterfacesDescriptions header = this.HeadersWithInterfaces.Last();
-                byte[] data = abstractBlock.ConvertToByte(header.Header.ReverseByteOrder, OnException);
+                var header = HeadersWithInterfaces.Last();
+                var data = abstractBlock.ConvertToByte(header.Header.ReverseByteOrder, OnException);
 
                 if (abstractBlock.AssociatedInterfaceID.HasValue)
                 {
                     if (abstractBlock.AssociatedInterfaceID.Value >= header.InterfaceDescriptions.Count)
                     {
-                        throw new ArgumentOutOfRangeException(string.Format("[PcapNGWriter.WritePacket] Packet interface ID: {0} is greater than InterfaceDescriptions count: {1}", abstractBlock.AssociatedInterfaceID.Value, header.InterfaceDescriptions.Count));
+                        throw new ArgumentOutOfRangeException(
+                            $"[PcapNGWriter.WritePacket] Packet interface ID: {abstractBlock.AssociatedInterfaceID.Value} is greater than InterfaceDescriptions count: {header.InterfaceDescriptions.Count}");
                     }
-                    int maxLength = header.InterfaceDescriptions[abstractBlock.AssociatedInterfaceID.Value].SnapLength;
+                    var maxLength = header.InterfaceDescriptions[abstractBlock.AssociatedInterfaceID.Value].SnapLength;
                     if (data.Length > maxLength)
                     {
-                        throw new ArgumentOutOfRangeException(string.Format("[PcapNGWriter.WritePacket] block length: {0} is greater than MaximumCaptureLength: {1}",data.Length,maxLength));
+                        throw new ArgumentOutOfRangeException(
+                            $"[PcapNGWriter.WritePacket] block length: {data.Length} is greater than MaximumCaptureLength: {maxLength}");
                             
                     }
                 }
@@ -134,10 +118,7 @@ namespace PcapngUtils.PcapNG
 
         public void WriteHeaderWithInterfacesDescriptions(HeaderWithInterfacesDescriptions headersWithInterface)
         {
-            Contract.Requires<ArgumentNullException>(headersWithInterface != null, "headersWithInterface  cannot be null");
-            Contract.Requires<ArgumentNullException>(headersWithInterface.Header != null, "headersWithInterface.Header  cannot be null");
-
-            byte [] data = headersWithInterface.ConvertToByte(headersWithInterface.Header.ReverseByteOrder, OnException);
+            var data = headersWithInterface.ConvertToByte(headersWithInterface.Header.ReverseByteOrder, OnException);
             try
             {
                 lock (syncRoot)

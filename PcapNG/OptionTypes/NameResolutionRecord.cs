@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using PcapngUtils.Extensions;
 using System.Diagnostics.Contracts;
 using System.IO;
 using NUnit.Framework;
@@ -26,62 +24,37 @@ namespace PcapngUtils.PcapNG.OptionTypes
 
         #region fields & properies
 
-        private IPAddress ipAddr;
-         /// <summary>
+        /// <summary>
         /// The IPv4 or IPv6 address of the DNS server.
          /// </summary>
-        public IPAddress IpAddr
-        {
-            get
-            {
-                return ipAddr;
-            }
-            set
-            {
-                Contract.Requires<ArgumentNullException>(value != null, "IpAddr cannot be null");
-                Contract.Requires<ArgumentNullException>(value.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || value.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6, "Invalid ip addres family");
-                this.ipAddr = value;
-            }
-        }
+        public IPAddress IpAddr { get; }
 
-        private string description;
         /// <summary>
         /// A UTF-8 string containing the name of the machine (DNS server) used to perform the name resolution.
         /// </summary>        
-        public string Description
-        {
-            get
-            {
-                return description;
-            }
-            set
-            {
-                Contract.Requires<ArgumentNullException>(!string.IsNullOrWhiteSpace(value), "Description cannot be null, empty or whitespace");
-                this.description = value;
-            }
-        }
+        public string Description { get; }
+
         #endregion
 
         #region ctor
         public NameResolutionRecordEntry(IPAddress IpAddr, string Description)
         {
-            Contract.Requires<ArgumentNullException>(!string.IsNullOrWhiteSpace(Description), "Description cannot be null, empty or whitespace");
-            Contract.Requires<ArgumentNullException>(IpAddr != null, "IpAddr cannot be null");
-            Contract.Requires<ArgumentNullException>(IpAddr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || IpAddr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6, "Invalid ip addres family");
-            this.ipAddr = IpAddr;
-            this.description = Description;
+            if (IpAddr.AddressFamily is not (AddressFamily.InterNetwork or AddressFamily.InterNetworkV6))
+                throw new ArgumentException("Invalid ip address family");
+            this.IpAddr = IpAddr;
+            this.Description = Description;
         }
         #endregion
 
         #region method
-        public override bool Equals(Object obj)
+        public override bool Equals(object? obj)
         {
             if (obj == null || GetType() != obj.GetType())
                 return false;
 
-            NameResolutionRecordEntry p = (NameResolutionRecordEntry)obj;
+            var p = (NameResolutionRecordEntry)obj;
           
-           return Enumerable.SequenceEqual(this.IpAddr.GetAddressBytes(), p.IpAddr.GetAddressBytes()) && (this.Description.CompareTo(p.Description) == 0);
+           return Enumerable.SequenceEqual(IpAddr.GetAddressBytes(), p.IpAddr.GetAddressBytes()) && (Description.CompareTo(p.Description) == 0);
         }
 
         public override int GetHashCode()
@@ -105,23 +78,23 @@ namespace PcapngUtils.PcapNG.OptionTypes
             public static void NameResolutionRecord_ConvertToByte_Test(bool reorder)
             {
                 NameResolutionRecord postNameResolution;
-                NameResolutionRecord preNameResolution = new NameResolutionRecord(new List<NameResolutionRecordEntry>());
+                var preNameResolution = new NameResolutionRecord(new List<NameResolutionRecordEntry>());
                 preNameResolution.Add(new NameResolutionRecordEntry(new IPAddress(new byte[] { 127, 0, 0, 1 }), "localhost"));
                 preNameResolution.Add(new NameResolutionRecordEntry(new IPAddress(new byte[] { 0x20, 0x01, 0x0d, 0x0db, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x14, 0x28, 0x57, 0xab }), "test addr"));
 
-                byte[] preNameResolutionRecord = preNameResolution.ConvertToByte(reorder, null);
+                var preNameResolutionRecord = preNameResolution.ConvertToByte(reorder, null);
 
-                using (MemoryStream stream = new MemoryStream(preNameResolutionRecord))
+                using (var stream = new MemoryStream(preNameResolutionRecord))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        postNameResolution = NameResolutionRecord.Parse(binaryReader, reorder, null);
+                        postNameResolution = Parse(binaryReader, reorder, null);
                     }
                 }
 
                 Assert.IsNotNull(postNameResolution);
                 Assert.AreEqual(preNameResolution.Count, postNameResolution.Count);
-                for (int i = 0; i < preNameResolution.Count; i++)
+                for (var i = 0; i < preNameResolution.Count; i++)
                 {
                     Assert.AreEqual(preNameResolution[i].IpAddr, postNameResolution[i].IpAddr);
                     Assert.AreEqual(preNameResolution[i].Description, postNameResolution[i].Description);
@@ -209,18 +182,15 @@ namespace PcapngUtils.PcapNG.OptionTypes
         #region ctor
         private NameResolutionRecord(List<NameResolutionRecordEntry> listRecords)
         {
-            Contract.Requires<ArgumentNullException>(listRecords != null, "binaryReader cannot be null");
             this.listRecords = listRecords; 
         }
         #endregion
 
         #region method
-        public static NameResolutionRecord Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception> ActionOnException)
+        public static NameResolutionRecord Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(binaryReader != null, "binaryReader cannot be null");
-
-            List<NameResolutionRecordEntry> listRecords = new List<NameResolutionRecordEntry>();
-            List<KeyValuePair<ushort, byte[]>> keyValueList = EkstractOptions(binaryReader, reverseByteOrder, ActionOnException);
+            var listRecords = new List<NameResolutionRecordEntry>();
+            var keyValueList = ExtractOptions(binaryReader, reverseByteOrder, ActionOnException);
 
             foreach (var item in keyValueList)
             {
@@ -232,11 +202,11 @@ namespace PcapngUtils.PcapNG.OptionTypes
                             {
                                 if (item.Value.Length >= 4)
                                 {
-                                    byte[] addrTemp = item.Value.Take(4).ToArray();
-                                    byte[] descTemp = item.Value.Skip(4).Take(item.Value.Length - 4).ToArray();
-                                    IPAddress addr = new IPAddress(addrTemp);
-                                    string desc = UTF8Encoding.UTF8.GetString(descTemp);
-                                    NameResolutionRecordEntry record = new NameResolutionRecordEntry(addr, desc);
+                                    var addrTemp = item.Value.Take(4).ToArray();
+                                    var descTemp = item.Value.Skip(4).Take(item.Value.Length - 4).ToArray();
+                                    var addr = new IPAddress(addrTemp);
+                                    var desc = Encoding.UTF8.GetString(descTemp);
+                                    var record = new NameResolutionRecordEntry(addr, desc);
                                     listRecords.Add(record);
                                 }
                                 break;
@@ -245,11 +215,11 @@ namespace PcapngUtils.PcapNG.OptionTypes
                             {
                                 if (item.Value.Length >= 16)
                                 {
-                                    byte[] addrTemp = item.Value.Take(16).ToArray();
-                                    byte[] descTemp = item.Value.Skip(16).Take(item.Value.Length - 16).ToArray();
-                                    IPAddress addr = new IPAddress(addrTemp);
-                                    string desc = UTF8Encoding.UTF8.GetString(descTemp);
-                                    NameResolutionRecordEntry record = new NameResolutionRecordEntry(addr, desc);
+                                    var addrTemp = item.Value.Take(16).ToArray();
+                                    var descTemp = item.Value.Skip(16).Take(item.Value.Length - 16).ToArray();
+                                    var addr = new IPAddress(addrTemp);
+                                    var desc = Encoding.UTF8.GetString(descTemp);
+                                    var record = new NameResolutionRecordEntry(addr, desc);
                                     listRecords.Add(record);
                                 }
                                 break;
@@ -268,28 +238,28 @@ namespace PcapngUtils.PcapNG.OptionTypes
             return new NameResolutionRecord(listRecords);
         }
 
-        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception> ActionOnException)
+        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            List<byte> ret = new List<byte>();
+            var ret = new List<byte>();
             foreach (var record in listRecords)
             {
                 switch(record.IpAddr.AddressFamily)
                 {
                     case AddressFamily.InterNetwork:
                         {
-                            List<byte> temp = new List<byte>();
+                            var temp = new List<byte>();
                             temp.AddRange(record.IpAddr.GetAddressBytes());
-                            temp.AddRange( UTF8Encoding.UTF8.GetBytes(record.Description));
-                            if (temp.Count <= UInt16.MaxValue)
+                            temp.AddRange( Encoding.UTF8.GetBytes(record.Description));
+                            if (temp.Count <= ushort.MaxValue)
                                 ret.AddRange(ConvertOptionFieldToByte((ushort)NameResolutionRecordEntry.NameResolutionRecordCode.Ip4Record, temp.ToArray(), reverseByteOrder, ActionOnException));
                         }
                         break;
                     case AddressFamily.InterNetworkV6:
                         {
-                            List<byte> temp = new List<byte>();
+                            var temp = new List<byte>();
                             temp.AddRange(record.IpAddr.GetAddressBytes());
-                            temp.AddRange(UTF8Encoding.UTF8.GetBytes(record.Description));
-                            if (temp.Count <= UInt16.MaxValue)
+                            temp.AddRange(Encoding.UTF8.GetBytes(record.Description));
+                            if (temp.Count <= ushort.MaxValue)
                                 ret.AddRange(ConvertOptionFieldToByte((ushort)NameResolutionRecordEntry.NameResolutionRecordCode.Ip6Record, temp.ToArray(), reverseByteOrder, ActionOnException));
                         }
                         break;
@@ -298,7 +268,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 }                
             }
 
-            ret.AddRange(ConvertOptionFieldToByte((ushort)NameResolutionRecordEntry.NameResolutionRecordCode.EndOfRecord, new byte[0], reverseByteOrder, ActionOnException));
+            ret.AddRange(ConvertOptionFieldToByte((ushort)NameResolutionRecordEntry.NameResolutionRecordCode.EndOfRecord, Array.Empty<byte>(), reverseByteOrder, ActionOnException));
             return ret.ToArray();
         }
 

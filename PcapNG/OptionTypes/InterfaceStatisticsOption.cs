@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using PcapngUtils.Extensions;
-using PcapngUtils.PcapNG.OptionTypes;
 using PcapngUtils.PcapNG.CommonTypes;
 using System.IO;
 using System.Diagnostics.Contracts;
@@ -24,7 +22,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
             [ContractVerification(false)]
             public static void InterfaceStatisticsOption_ConvertToByte_Test(bool reorder)
             {
-                InterfaceStatisticsOption preOption = new InterfaceStatisticsOption();
+                var preOption = new InterfaceStatisticsOption();
                 InterfaceStatisticsOption postOption;
                 preOption.Comment = "Test Comment";
                 preOption.DeliveredToUser = 25;
@@ -35,22 +33,22 @@ namespace PcapngUtils.PcapNG.OptionTypes
                 preOption.InterfaceReceived = 40;
                 preOption.SystemDrop = 45;
 
-                byte[] preOptionByte = preOption.ConvertToByte(reorder, null);
-                using (MemoryStream stream = new MemoryStream(preOptionByte))
+                var preOptionByte = preOption.ConvertToByte(reorder, null);
+                using (var stream = new MemoryStream(preOptionByte))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        postOption = InterfaceStatisticsOption.Parse(binaryReader, reorder, null);
+                        postOption = Parse(binaryReader, reorder, null);
                     }
                 }
 
                 Assert.IsNotNull(postOption);
                 Assert.AreEqual(preOption.Comment, postOption.Comment);
                 Assert.AreEqual(preOption.DeliveredToUser, postOption.DeliveredToUser);
-                Assert.AreEqual(preOption.EndTime.Seconds, postOption.EndTime.Seconds);
-                Assert.AreEqual(preOption.EndTime.Microseconds, postOption.EndTime.Microseconds);
-                Assert.AreEqual(preOption.StartTime.Seconds, postOption.StartTime.Seconds);
-                Assert.AreEqual(preOption.StartTime.Microseconds, postOption.StartTime.Microseconds);
+                Assert.AreEqual(preOption.EndTime.Seconds, postOption.EndTime?.Seconds);
+                Assert.AreEqual(preOption.EndTime.Microseconds, postOption.EndTime?.Microseconds);
+                Assert.AreEqual(preOption.StartTime.Seconds, postOption.StartTime?.Seconds);
+                Assert.AreEqual(preOption.StartTime.Microseconds, postOption.StartTime?.Microseconds);
                 Assert.AreEqual(preOption.FilterAccept, postOption.FilterAccept);
                 Assert.AreEqual(preOption.InterfaceDrop, postOption.InterfaceDrop);
                 Assert.AreEqual(preOption.InterfaceReceived, postOption.InterfaceReceived);
@@ -78,10 +76,10 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// <summary>
         /// A UTF-8 string containing a comment that is associated to the current block.
         /// </summary>
-        public string Comment
+        public string? Comment
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -92,10 +90,10 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// from the libpcap file format, timestamps are not saved as two 32-bit values accounting for the seconds and microseconds since 
         /// 1/1/1970. They are saved as a single 64-bit quantity saved as two 32-bit words.
         /// </summary>
-        public TimestampHelper StartTime
+        public TimestampHelper? StartTime
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -106,10 +104,10 @@ namespace PcapngUtils.PcapNG.OptionTypes
         /// from the libpcap file format, timestamps are not saved as two 32-bit values accounting for the seconds and microseconds since 
         /// 1/1/1970. They are saved as a single 64-bit quantity saved as two 32-bit words.
         /// </summary>
-        public TimestampHelper EndTime
+        public TimestampHelper? EndTime
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -118,7 +116,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public long? InterfaceReceived
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -127,7 +125,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public long? InterfaceDrop
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -136,7 +134,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public long? FilterAccept
         {
             get;
-            set;
+            private set;
         }
 
         /// <summary>
@@ -145,7 +143,7 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public long? SystemDrop
         {
             get;
-            set;
+            private set;
         }
           
         /// <summary>
@@ -155,12 +153,12 @@ namespace PcapngUtils.PcapNG.OptionTypes
         public long? DeliveredToUser
         {
             get;
-            set;
+            private set;
         }
         #endregion
 
         #region ctor
-        public InterfaceStatisticsOption(string Comment = null, TimestampHelper StartTime = null, TimestampHelper EndTime = null, long? InterfaceReceived = null,
+        public InterfaceStatisticsOption(string? Comment = null, TimestampHelper? StartTime = null, TimestampHelper? EndTime = null, long? InterfaceReceived = null,
             long? InterfaceDrop = null, long? FilterAccept = null, long? SystemDrop = null, long? DeliveredToUser =null) 
         {
             this.Comment = Comment;
@@ -175,90 +173,93 @@ namespace PcapngUtils.PcapNG.OptionTypes
         #endregion
 
         #region method
-        public static InterfaceStatisticsOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception> ActionOnException)
+        public static InterfaceStatisticsOption Parse(BinaryReader binaryReader, bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(binaryReader != null, "binaryReader cannot be null");
+            var option = new InterfaceStatisticsOption();
+            var optionsList = ExtractOptions(binaryReader, reverseByteOrder, ActionOnException);
 
-            InterfaceStatisticsOption option = new InterfaceStatisticsOption();
-            List<KeyValuePair<ushort, byte[]>> optionsList = EkstractOptions(binaryReader, reverseByteOrder, ActionOnException);
-           
-            if (optionsList.Any())
+            if (!optionsList.Any()) return option;
+            foreach (var item in optionsList)
             {
-                foreach (var item in optionsList)
+                try
                 {
-                    try
+                    switch (item.Key)
                     {
-                        switch (item.Key)
-                        {
-                            case (ushort)InterfaceStatisticsOptionCode.CommentCode:
-                                option.Comment = UTF8Encoding.UTF8.GetString(item.Value);
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.StartTimeCode:
-                                if (item.Value.Length == 8)
-                                    option.StartTime = new TimestampHelper(item.Value, reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceStatisticsOption.Parse] StartTimeCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.EndTimeCode:
-                                if (item.Value.Length == 8)
-                                    option.EndTime = new TimestampHelper(item.Value, reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceStatisticsOption.Parse] EndTimeCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.InterfaceReceivedCode:                                
-                                if (item.Value.Length == 8)
-                                     option.InterfaceReceived = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceStatisticsOption.Parse] InterfaceReceivedCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.InterfaceDropCode:                               
-                                if (item.Value.Length == 8)
-                                     option.InterfaceDrop = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceStatisticsOption.Parse] InterfaceDropCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.FilterAcceptCode:                               
-                                if (item.Value.Length == 8)
-                                     option.FilterAccept = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceStatisticsOption.Parse] FilterAcceptCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.SystemDropCode:                               
-                                if (item.Value.Length == 8)
-                                     option.SystemDrop = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceStatisticsOption.Parse] SystemDropCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.DeliveredToUserCode:                                
-                                if (item.Value.Length == 8)
-                                     option.DeliveredToUser = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
-                                else
-                                    throw new ArgumentException(string.Format("[InterfaceStatisticsOption.Parse] DeliveredToUserCode contains invalid length. Received: {0} bytes, expected: {1}", item.Value.Length, 8));
-                                break;
-                            case (ushort)InterfaceStatisticsOptionCode.EndOfOptionsCode:
-                            default:
-                                break;
-                        }
-                    }
-                    catch (Exception exc)
-                    {
-                        if (ActionOnException != null)
-                            ActionOnException(exc);
+                        case (ushort)InterfaceStatisticsOptionCode.CommentCode:
+                            option.Comment = Encoding.UTF8.GetString(item.Value);
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.StartTimeCode:
+                            if (item.Value.Length == 8)
+                                option.StartTime = new TimestampHelper(item.Value, reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceStatisticsOption.Parse] StartTimeCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.EndTimeCode:
+                            if (item.Value.Length == 8)
+                                option.EndTime = new TimestampHelper(item.Value, reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceStatisticsOption.Parse] EndTimeCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.InterfaceReceivedCode:                                
+                            if (item.Value.Length == 8)
+                                option.InterfaceReceived = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceStatisticsOption.Parse] InterfaceReceivedCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.InterfaceDropCode:                               
+                            if (item.Value.Length == 8)
+                                option.InterfaceDrop = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceStatisticsOption.Parse] InterfaceDropCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.FilterAcceptCode:                               
+                            if (item.Value.Length == 8)
+                                option.FilterAccept = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceStatisticsOption.Parse] FilterAcceptCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.SystemDropCode:                               
+                            if (item.Value.Length == 8)
+                                option.SystemDrop = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceStatisticsOption.Parse] SystemDropCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.DeliveredToUserCode:                                
+                            if (item.Value.Length == 8)
+                                option.DeliveredToUser = (BitConverter.ToInt64(item.Value, 0)).ReverseByteOrder(reverseByteOrder);
+                            else
+                                throw new ArgumentException(
+                                    $"[InterfaceStatisticsOption.Parse] DeliveredToUserCode contains invalid length. Received: {item.Value.Length} bytes, expected: {8}");
+                            break;
+                        case (ushort)InterfaceStatisticsOptionCode.EndOfOptionsCode:
+                        default:
+                            break;
                     }
                 }
+                catch (Exception exc)
+                {
+                    if (ActionOnException != null)
+                        ActionOnException(exc);
+                }
             }
-            
+
             return option;
         }
 
-        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception> ActionOnException)
+        public override byte[] ConvertToByte(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {    
-            List<byte> ret = new List<byte>();
+            var ret = new List<byte>();
 
             if (Comment != null)
             {
-                byte[] comentValue = UTF8Encoding.UTF8.GetBytes(Comment);
-                if (comentValue.Length <= UInt16.MaxValue)
+                var comentValue = Encoding.UTF8.GetBytes(Comment);
+                if (comentValue.Length <= ushort.MaxValue)
                     ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.CommentCode, comentValue, reverseByteOrder, ActionOnException));
             }
 
@@ -274,35 +275,35 @@ namespace PcapngUtils.PcapNG.OptionTypes
 
             if (InterfaceReceived.HasValue)
             {
-                byte[] receivedCountValue = BitConverter.GetBytes(InterfaceReceived.Value.ReverseByteOrder(reverseByteOrder));
+                var receivedCountValue = BitConverter.GetBytes(InterfaceReceived.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.InterfaceReceivedCode, receivedCountValue, reverseByteOrder, ActionOnException));
             }
 
             if (InterfaceDrop.HasValue)
             {
-                byte[] dropCountValue = BitConverter.GetBytes(InterfaceDrop.Value.ReverseByteOrder(reverseByteOrder));
+                var dropCountValue = BitConverter.GetBytes(InterfaceDrop.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.InterfaceDropCode, dropCountValue, reverseByteOrder, ActionOnException));
             }
 
             if (FilterAccept.HasValue)
             {
-                byte[] filterValue = BitConverter.GetBytes(FilterAccept.Value.ReverseByteOrder(reverseByteOrder));
+                var filterValue = BitConverter.GetBytes(FilterAccept.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.FilterAcceptCode, filterValue, reverseByteOrder, ActionOnException));
             }
 
             if (SystemDrop.HasValue)
             {
-                byte[] systemDropValue = BitConverter.GetBytes(SystemDrop.Value.ReverseByteOrder(reverseByteOrder));
+                var systemDropValue = BitConverter.GetBytes(SystemDrop.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.SystemDropCode, systemDropValue, reverseByteOrder, ActionOnException));
             }
 
             if (DeliveredToUser.HasValue)
             {
-                byte[] deliverValue = BitConverter.GetBytes(DeliveredToUser.Value.ReverseByteOrder(reverseByteOrder));
+                var deliverValue = BitConverter.GetBytes(DeliveredToUser.Value.ReverseByteOrder(reverseByteOrder));
                 ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.DeliveredToUserCode, deliverValue, reverseByteOrder, ActionOnException));
             }
 
-            ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.EndOfOptionsCode, new byte[0], reverseByteOrder, ActionOnException));
+            ret.AddRange(ConvertOptionFieldToByte((ushort)InterfaceStatisticsOptionCode.EndOfOptionsCode, Array.Empty<byte>(), reverseByteOrder, ActionOnException));
             return ret.ToArray();
         }
         #endregion

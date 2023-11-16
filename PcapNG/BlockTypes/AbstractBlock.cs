@@ -1,5 +1,5 @@
 ﻿using System;
-using PcapngUtils.PcapNG.BlockTypes;
+
 namespace PcapngUtils.PcapNG.BlockTypes
 {
     public abstract class AbstractBlock
@@ -29,11 +29,11 @@ namespace PcapngUtils.PcapNG.BlockTypes
         #endregion
 
         #region method
-        protected abstract BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception> ActionOnException);
+        protected abstract BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception>? ActionOnException);
 
-        public byte[] ConvertToByte(bool reverseByteOrder, Action<Exception> ActionOnException)
+        public byte[] ConvertToByte(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            BaseBlock baseBlock = ConvertToBaseBlock(reverseByteOrder, ActionOnException);
+            var baseBlock = ConvertToBaseBlock(reverseByteOrder, ActionOnException);
             return baseBlock.ConvertToByte(reverseByteOrder);
         }
         #endregion

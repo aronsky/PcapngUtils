@@ -1,14 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using PcapngUtils.PcapNG;
 using PcapngUtils.PcapNG.CommonTypes;
-using PcapngUtils.PcapNG.BlockTypes;
 using PcapngUtils.Extensions;
 using PcapngUtils.PcapNG.OptionTypes;
-using System.Diagnostics.Contracts;
 using NUnit.Framework;
 namespace PcapngUtils.PcapNG.BlockTypes
 {
@@ -23,29 +18,29 @@ namespace PcapngUtils.PcapNG.BlockTypes
             [TestCase(false)]
             public static void InterfaceStatisticsBlock_ConvertToByte_Test(bool reorder)
             {
-                InterfaceStatisticsBlock preStatisticBlock, postStatisticBlock;
+                InterfaceStatisticsBlock? preStatisticBlock;
                 byte[] byteblock = { 5, 0, 0, 0, 108, 0, 0, 0, 1, 0, 0, 0, 34, 18, 5, 0, 87, 234, 56, 202, 1, 0, 28, 0, 67, 111, 117, 110, 116, 101, 114, 115, 32, 112, 114, 111, 118, 105, 100, 101, 100, 32, 98, 121, 32, 100, 117, 109, 112, 99, 97, 112, 2, 0, 8, 0, 34, 18, 5, 0, 36, 137, 18, 202, 3, 0, 8, 0, 34, 18, 5, 0, 87, 234, 56, 202, 4, 0, 8, 0, 56, 0, 0, 0, 0, 0, 0, 0, 5, 0, 8, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 108, 0, 0, 0 };
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        AbstractBlock block = AbstractBlockFactory.ReadNextBlock(binaryReader, false, null);
+                        var block = AbstractBlockFactory.ReadNextBlock(binaryReader, false, null);
                         Assert.IsNotNull(block);
                         preStatisticBlock = block as InterfaceStatisticsBlock;
                         Assert.IsNotNull(preStatisticBlock);
-                        byteblock = preStatisticBlock.ConvertToByte(reorder, null);
+                        byteblock = preStatisticBlock!.ConvertToByte(reorder, null);
                     }
                 }
-                using (MemoryStream stream = new MemoryStream(byteblock))
+                using (var stream = new MemoryStream(byteblock))
                 {
-                    using (BinaryReader binaryReader = new BinaryReader(stream))
+                    using (var binaryReader = new BinaryReader(stream))
                     {
-                        AbstractBlock block = AbstractBlockFactory.ReadNextBlock(binaryReader, reorder, null);
+                        var block = AbstractBlockFactory.ReadNextBlock(binaryReader, reorder, null);
                         Assert.IsNotNull(block);
-                        postStatisticBlock = block as InterfaceStatisticsBlock;
+                        var postStatisticBlock = block as InterfaceStatisticsBlock;
                         Assert.IsNotNull(postStatisticBlock);
 
-                        Assert.AreEqual(preStatisticBlock.BlockType, postStatisticBlock.BlockType);
+                        Assert.AreEqual(preStatisticBlock.BlockType, postStatisticBlock!.BlockType);
                         Assert.AreEqual(preStatisticBlock.InterfaceID, postStatisticBlock.InterfaceID);
                         Assert.AreEqual(preStatisticBlock.Timestamp, postStatisticBlock.Timestamp);
                         Assert.AreEqual(preStatisticBlock.Options.Comment, postStatisticBlock.Options.Comment);
@@ -120,34 +115,28 @@ namespace PcapngUtils.PcapNG.BlockTypes
             }
             set
             {
-                Contract.Requires<ArgumentNullException>(value != null, "Options cannot be null");
                 options = value;
             }
         }
         #endregion
 
         #region ctor
-        public static InterfaceStatisticsBlock Parse(BaseBlock baseBlock, Action<Exception> ActionOnException)
+        public static InterfaceStatisticsBlock Parse(BaseBlock baseBlock, Action<Exception>? ActionOnException)
         {
-            Contract.Requires<ArgumentNullException>(baseBlock != null, "BaseBlock cannot be null");
-            Contract.Requires<ArgumentNullException>(baseBlock.Body != null, "BaseBlock.Body cannot be null");
-            Contract.Requires<ArgumentException>(baseBlock.BlockType == BaseBlock.Types.InterfaceStatistics, "Invalid packet type");    
+            if (baseBlock.BlockType != BaseBlock.Types.InterfaceStatistics)
+                throw new ArgumentException("Invalid packet type");
 
-            long positionInStream = baseBlock.PositionInStream;
-            using (Stream stream = new MemoryStream(baseBlock.Body))
-            {
-                using (BinaryReader binaryReader = new BinaryReader(stream))
-                {
-                    int interfaceID = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
-                    byte[] timestamp = binaryReader.ReadBytes(8);
-                    if (timestamp.Length < 8)
-                        throw new EndOfStreamException("Unable to read beyond the end of the stream");
-                    TimestampHelper timestampHelper = new TimestampHelper(timestamp, baseBlock.ReverseByteOrder);
-                    InterfaceStatisticsOption options = InterfaceStatisticsOption.Parse(binaryReader, baseBlock.ReverseByteOrder, ActionOnException);
-                    InterfaceStatisticsBlock statisticBlock = new InterfaceStatisticsBlock(interfaceID, timestampHelper, options, positionInStream);
-                    return statisticBlock;
-                }
-            }
+            var positionInStream = baseBlock.PositionInStream;
+            using Stream stream = new MemoryStream(baseBlock.Body);
+            using var binaryReader = new BinaryReader(stream);
+            var interfaceID = binaryReader.ReadInt32().ReverseByteOrder(baseBlock.ReverseByteOrder);
+            var timestamp = binaryReader.ReadBytes(8);
+            if (timestamp.Length < 8)
+                throw new EndOfStreamException("Unable to read beyond the end of the stream");
+            var timestampHelper = new TimestampHelper(timestamp, baseBlock.ReverseByteOrder);
+            var options = InterfaceStatisticsOption.Parse(binaryReader, baseBlock.ReverseByteOrder, ActionOnException);
+            var statisticBlock = new InterfaceStatisticsBlock(interfaceID, timestampHelper, options, positionInStream);
+            return statisticBlock;
         }
 
         /// <summary>
@@ -158,24 +147,21 @@ namespace PcapngUtils.PcapNG.BlockTypes
         /// </summary>        
         public InterfaceStatisticsBlock(int InterfaceID, TimestampHelper Timestamp, InterfaceStatisticsOption Options, long PositionInStream = 0)
         {
-            Contract.Requires<ArgumentNullException>(Timestamp != null, "Timestamp cannot be null");
-            Contract.Requires<ArgumentNullException>(Options != null, "Options cannot be null");
-           
             this.InterfaceID = InterfaceID;
             this.Timestamp = Timestamp;              
-            this.options = Options;
+            options = Options;
             this.PositionInStream = PositionInStream;
         }
         #endregion;
 
         #region method
-        protected override BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception> ActionOnException)
+        protected override BaseBlock ConvertToBaseBlock(bool reverseByteOrder, Action<Exception>? ActionOnException)
         {
-            List<byte> body = new List<byte>();
+            var body = new List<byte>();
             body.AddRange(BitConverter.GetBytes(InterfaceID.ReverseByteOrder(reverseByteOrder)));
             body.AddRange(Timestamp.ConvertToByte(reverseByteOrder));            
             body.AddRange(Options.ConvertToByte(reverseByteOrder, ActionOnException));
-            BaseBlock baseBlock = new BaseBlock(this.BlockType, body.ToArray(), reverseByteOrder, 0);
+            var baseBlock = new BaseBlock(BlockType, body.ToArray(), reverseByteOrder, 0);
             return baseBlock;
         }
         #endregion

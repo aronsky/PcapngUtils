@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace PcapngUtils.Common
+﻿namespace PcapngUtils.Common
 {
     public interface IPacket
     {
-        UInt64 Seconds {get;}
-        UInt64 Microseconds{get;}
+        ulong Seconds {get;}
+        ulong Microseconds{get;}
         byte[] Data { get; }
     }
 }
