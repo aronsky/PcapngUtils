@@ -4,6 +4,7 @@ using PcapngUtils.PcapNG;
 using PcapngUtils.PcapNG.BlockTypes;
 using System;
 using System.IO;
+using System.Text;
 
 namespace PcapngUtils
 {
@@ -64,7 +65,7 @@ namespace PcapngUtils
         {
             uint mask;
             
-            using (var binaryReader = new BinaryReader(stream))
+            using (var binaryReader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true))
             {
                 if (binaryReader.BaseStream.Length < 12)
                     throw new ArgumentException($"[IReaderFactory.GetReader] stream is too short ");
